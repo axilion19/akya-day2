@@ -46,3 +46,10 @@ export type FieldReport = Schemas['FieldReport']
 export type ExpectedVehicle = Schemas['ExpectedVehicle']
 export type ReportJudgment = Schemas['ReportJudgment']
 export type ReportVerdict = ReportJudgment['verdict']
+
+// Admin tuning
+export type AgentTuning = Schemas['AgentTuning']
+export type TuningView = Schemas['TuningView']
+export type PromptPreview = Schemas['PromptPreview']
+export type PromptName = Schemas['PromptPreviewRequest']['name']
+export type Tier = Schemas['Tier']

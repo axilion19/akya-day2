@@ -10,11 +10,12 @@ from fastapi.responses import StreamingResponse
 from app.agent.llm_client import ChatLLM
 from app.agent.watch.recordings import list_recordings, load_recording
 from app.agent.watch.store import WatchRun, WatchRunStore
-from app.api.deps import get_detector, get_llm, get_repository, get_watch_store
+from app.api.deps import get_detector, get_llm, get_repository, get_tuning, get_watch_store
 from app.core.config import Settings, get_settings
 from app.core.errors import NotFoundError
 from app.core.timefmt import to_minutes
 from app.data.repository import Repository
+from app.domain.tuning import AgentTuning
 from app.domain.watch import (
     WatchEvent,
     WatchRecording,
@@ -43,11 +44,14 @@ async def create_run(
     llm: Annotated[ChatLLM | None, Depends(get_llm)],
     detector: Annotated[Detector, Depends(get_detector)],
     store: Annotated[WatchRunStore, Depends(get_watch_store)],
+    tuning: Annotated[AgentTuning, Depends(get_tuning)],
 ) -> WatchRunCreated:
     """Start replaying ticks `start`..`end` in the background."""
     if body.watchers:
         settings = settings.model_copy(update={"watcher_count": body.watchers})
-    run = store.start(repo, settings, llm, detector, to_minutes(body.start), to_minutes(body.end))
+    run = store.start(
+        repo, settings, llm, detector, to_minutes(body.start), to_minutes(body.end), tuning
+    )
     return WatchRunCreated(run_id=run.run_id)
 
 

@@ -14,10 +14,12 @@ from app.core.timefmt import to_hhmm, to_minutes
 from app.data.repository import Repository
 from app.domain.geo import LatLon
 from app.domain.report import ReportClaim
+from app.domain.tuning import AgentTuning
 from app.domain.watch import VehicleRow
 from app.services import watch as watch_svc
 from app.services.behavior import behavior_class
 from app.services.motion import motion_profile
+from app.services.tuning import DEFAULT_TUNING
 
 JsonDict = dict[str, Any]
 
@@ -294,6 +296,7 @@ class WatchContext:
     trackers: TrackerBoard
     alerts: AlertBoard
     rows: dict[str, VehicleRow]  # vehicles active at this tick
+    tuning: AgentTuning = DEFAULT_TUNING  # snapshot taken when the run started
 
     @property
     def tick(self) -> str:
@@ -366,8 +369,8 @@ def _route(ctx: WatchContext, tid: str) -> JsonDict:
         else:
             sectors.append({"sector": s, "from": p.time, "to": p.time})
     vehicle_type = ctx.registry.get(tid).vehicle_type
-    behavior = behavior_class(points, ctx.base)
-    rubric = watch_svc.track_rubric(motion, vehicle_type, behavior)
+    behavior = behavior_class(points, ctx.base, ctx.tuning.behavior)
+    rubric = watch_svc.track_rubric(motion, vehicle_type, behavior, tuning=ctx.tuning)
     return {
         "track_id": tid,
         "vehicle_type": vehicle_type,

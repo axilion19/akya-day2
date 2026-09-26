@@ -19,8 +19,7 @@ from app.agent.llm_client import ChatLLM
 from app.agent.watch import tools as t
 from app.agent.watch.boards import BoardError
 from app.agent.watch.loop import run_tool_loop
-from app.agent.watch.prompts import render
-from app.agent.watch.watcher import LANGUAGE_NAMES
+from app.agent.watch.prompts import LANGUAGE_NAMES, render
 from app.domain.watch import ExpectedVehicle, GeneratedBy, SupervisorAction
 from app.services.watch import resolve_sector
 

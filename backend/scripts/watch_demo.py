@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from app.agent.llm_client import GLMClient, build_llm
+from app.agent.tuning_store import TuningStore
 from app.agent.watch.runner import WatchRunner
 from app.core.config import get_settings
 from app.core.timefmt import to_minutes
@@ -37,6 +38,7 @@ from app.domain.watch import (
     event_payload,
 )
 from app.services.detection import build_detector
+from app.services.tuning import tuning_hash
 
 
 def _print(event: Any) -> None:
@@ -132,6 +134,9 @@ async def main() -> None:
     if args.weights:
         overrides |= {"detector_kind": "ultralytics", "detector_weights": args.weights.resolve()}
     settings = get_settings().model_copy(update=overrides)
+    tuning, tuning_warning = TuningStore(settings.cache_dir / "admin_overrides.json").load()
+    if tuning_warning:
+        print(f"admin tuning ignored: {tuning_warning}")
     repo = Repository(settings.data_dir)
     scenario = load_scenario(args.scenario) if args.scenario else None
     if scenario is not None:  # its synthetic vehicles join this run only
@@ -142,7 +147,7 @@ async def main() -> None:
     print(
         f"LLM: {'off (fallbacks)' if llm is None else settings.llm_model} · "
         f"watchers: {settings.watcher_count} · detector: {detector_state} · "
-        f"ticks {args.start}-{args.end}"
+        f"ticks {args.start}-{args.end} · tuning {tuning_hash(tuning)}"
     )
 
     out_dir = settings.cache_dir / "watch_runs"
@@ -155,7 +160,7 @@ async def main() -> None:
             log.write(json.dumps(event_payload(event), ensure_ascii=False) + "\n")
             log.flush()
 
-        runner = WatchRunner(repo, settings, llm, on_event, detector, scenario)
+        runner = WatchRunner(repo, settings, llm, on_event, detector, tuning, scenario=scenario)
         await runner.run(to_minutes(args.start), to_minutes(args.end))
 
     if isinstance(llm, GLMClient):

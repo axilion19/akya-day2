@@ -15,8 +15,10 @@ from app.agent.watch.runner import WatchRunner
 from app.core.config import Settings
 from app.core.timefmt import to_hhmm
 from app.data.repository import Repository
+from app.domain.tuning import AgentTuning
 from app.domain.watch import WarningEvent, WatchRunStatus
 from app.services.detection import Detector
+from app.services.tuning import DEFAULT_TUNING
 
 logger = logging.getLogger(__name__)
 HEARTBEAT_S = 15.0
@@ -34,13 +36,14 @@ class WatchRun:
         detector: Detector | None,
         start_min: int,
         end_min: int,
+        tuning: AgentTuning = DEFAULT_TUNING,
     ) -> None:
         self.run_id, self.start_min, self.end_min = run_id, start_min, end_min
         self.watchers = settings.watcher_count
         self.events: list[Any] = []
         self.status = "running"
         self._changed = asyncio.Event()
-        self.runner = WatchRunner(repo, settings, llm, self.add, detector)
+        self.runner = WatchRunner(repo, settings, llm, self.add, detector, tuning)
         self.task: asyncio.Task[None] | None = None
 
     def add(self, event: Any) -> None:
@@ -105,9 +108,12 @@ class WatchRunStore:
         detector: Detector | None,
         start_min: int,
         end_min: int,
+        tuning: AgentTuning = DEFAULT_TUNING,
     ) -> WatchRun:
         """Create a run and start it as a background task on the running loop."""
-        run = WatchRun(uuid.uuid4().hex[:12], repo, settings, llm, detector, start_min, end_min)
+        run = WatchRun(
+            uuid.uuid4().hex[:12], repo, settings, llm, detector, start_min, end_min, tuning
+        )
         run.task = asyncio.create_task(run.execute())
         self._runs[run.run_id] = run
         return run

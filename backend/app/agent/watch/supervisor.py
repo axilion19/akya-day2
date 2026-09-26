@@ -19,9 +19,14 @@ from app.agent.llm_client import ChatLLM
 from app.agent.watch import tools as t
 from app.agent.watch.boards import BoardError
 from app.agent.watch.loop import SubmitError, fill_pattern_track_ids, run_tool_loop
-from app.agent.watch.prompts import render
+from app.agent.watch.prompts import (
+    LANGUAGE_NAMES,
+    PROMPT_FILES,
+    render_with_fallback,
+    threshold_vars,
+)
 from app.agent.watch.registry import LevelChange, level_index
-from app.agent.watch.watcher import LANGUAGE_NAMES, report_problems
+from app.agent.watch.watcher import report_problems
 from app.domain.watch import (
     WATCH_LEVELS,
     GeneratedBy,
@@ -33,7 +38,7 @@ from app.domain.watch import (
     WatchLevel,
 )
 
-PROMPT = "supervisor_v11"
+PROMPT = PROMPT_FILES["supervisor"]
 MAX_TOKENS = 16000
 NO_TRACKERS = (
     "3. No trackers or field units are available in this exercise: you cannot send anyone. "
@@ -220,8 +225,8 @@ def build_user_message(ctx: t.WatchContext, inp: SupervisorInput) -> str:
     return "\n\n".join(parts)
 
 
-def system_prompt(ctx: t.WatchContext, layout: dict[str, list[str]]) -> str:
-    """The supervisor's fixed system prompt."""
+def system_prompt(ctx: t.WatchContext, layout: dict[str, list[str]]) -> tuple[str, list[str]]:
+    """The supervisor's fixed system prompt and any warnings."""
     base = ctx.repo.scene.base
     layout_text = "; ".join(f"watcher {w}: {', '.join(s)}" for w, s in layout.items())
     tracker_rules = (
@@ -229,17 +234,18 @@ def system_prompt(ctx: t.WatchContext, layout: dict[str, list[str]]) -> str:
         if ctx.settings.trackers_enabled
         else NO_TRACKERS
     )
-    return render(
-        PROMPT,
-        base_name=base.name,
-        base_lat=base.position.lat,
-        base_lon=base.position.lon,
-        n_watchers=len(layout),
-        watcher_layout=layout_text,
-        tracker_rules=tracker_rules,
-        max_tool_calls=ctx.settings.supervisor_max_tool_calls,
-        output_language=LANGUAGE_NAMES[ctx.settings.brief_language],
-    )
+    values: dict[str, object] = {
+        "base_name": base.name,
+        "base_lat": base.position.lat,
+        "base_lon": base.position.lon,
+        "n_watchers": len(layout),
+        "watcher_layout": layout_text,
+        "tracker_rules": tracker_rules,
+        "max_tool_calls": ctx.settings.supervisor_max_tool_calls,
+        "output_language": LANGUAGE_NAMES[ctx.settings.brief_language],
+        **threshold_vars(ctx.tuning),
+    }
+    return render_with_fallback(PROMPT, ctx.tuning.prompts.supervisor, values)
 
 
 def _board(inp: SupervisorInput) -> list[dict[str, Any]]:
@@ -336,7 +342,9 @@ async def run_supervisor(
             "recall_tracker": effects.recall_tracker,
         }
         tools += [t.DISPATCH_TRACKER, t.RECALL_TRACKER]
-    out.system, out.user = system_prompt(ctx, inp.layout), build_user_message(ctx, inp)
+    out.system, prompt_warnings = system_prompt(ctx, inp.layout)
+    out.user = build_user_message(ctx, inp)
+    out.warnings.extend(prompt_warnings)
     loop = await run_tool_loop(
         llm,
         system=out.system,

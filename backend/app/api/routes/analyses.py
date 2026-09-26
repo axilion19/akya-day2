@@ -10,12 +10,20 @@ from fastapi import APIRouter, Depends
 
 from app.agent.pipeline import run_analysis
 from app.agent.store import AnalysisStore
-from app.api.deps import get_detector, get_fallback_detector, get_repository, get_store
+from app.api.deps import (
+    get_detector,
+    get_fallback_detector,
+    get_repository,
+    get_store,
+    get_tuning,
+)
 from app.core.config import Settings, get_settings
 from app.core.errors import NotFoundError
 from app.data.repository import Repository
 from app.domain.analysis import Analysis, AnalysisCreate, AnalysisCreated
+from app.domain.tuning import AgentTuning
 from app.services.detection import Detector
+from app.services.tuning import tuning_hash
 
 router = APIRouter(tags=["analyses"])
 
@@ -28,15 +36,23 @@ def create_analysis(
     fallback: Annotated[Detector, Depends(get_fallback_detector)],
     store: Annotated[AnalysisStore, Depends(get_store)],
     settings: Annotated[Settings, Depends(get_settings)],
+    tuning: Annotated[AgentTuning, Depends(get_tuning)],
 ) -> AnalysisCreated:
     """Analyze one frame (reuses the latest result unless `force_refresh`)."""
-    cached = None if body.force_refresh else store.latest_for(body.image_id)
+    key = tuning_hash(tuning)
+    cached = None if body.force_refresh else store.latest_for(body.image_id, key)
     if cached is not None:
         return AnalysisCreated(analysis_id=cached.id)
     analysis = run_analysis(
-        store.new_id(), body.image_id, repo, detector, settings, fallback_detector=fallback
+        store.new_id(),
+        body.image_id,
+        repo,
+        detector,
+        settings,
+        fallback_detector=fallback,
+        tuning=tuning,
     )
-    store.put(analysis)
+    store.put(analysis, key)
     return AnalysisCreated(analysis_id=analysis.id)
 
 

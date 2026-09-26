@@ -1,15 +1,27 @@
-import { PanelLeftClose, PanelLeftOpen, Radar, ShieldHalf } from 'lucide-react'
+import {
+  PanelLeftClose,
+  PanelLeftOpen,
+  Radar,
+  ShieldHalf,
+  UserCog,
+  type LucideIcon,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useAuth } from '@/hooks/useAuth'
 import { t } from '@/i18n'
+import type { Role } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 import { SidebarClock } from './SidebarClock'
+import { SidebarUser } from './SidebarUser'
 
-const NAV = [
+// The overview is reached from the home page (logo), not the menu.
+const NAV: readonly { to: string; label: string; icon: LucideIcon; role?: Role }[] = [
   { to: '/watch', label: t.nav.watch, icon: Radar },
-] as const
+  { to: '/admin', label: t.nav.admin, icon: UserCog, role: 'admin' },
+]
 
 const STORAGE_KEY = 'akya.sidebar.open'
 
@@ -39,6 +51,8 @@ export function Sidebar() {
       return !o
     })
   const sb = t.sidebar
+  const { user } = useAuth()
+  const items = NAV.filter((item) => !item.role || item.role === user?.role)
 
   return (
     <aside className={cn('flex shrink-0 flex-col border-r bg-sidebar transition-[width] duration-200', open ? 'w-56' : 'w-14')}>
@@ -58,7 +72,7 @@ export function Sidebar() {
       </Link>
 
       <nav className="flex flex-col gap-1 p-2" aria-label={sb.menu}>
-        {NAV.map(({ to, label, icon: Icon }) => {
+        {items.map(({ to, label, icon: Icon }) => {
           const link = (
             <NavLink
               to={to}
@@ -86,6 +100,7 @@ export function Sidebar() {
 
       <div className="mt-auto flex flex-col gap-3 border-t p-3">
         <SidebarClock open={open} />
+        <SidebarUser open={open} />
         <Button
           size="icon-sm"
           variant="ghost"

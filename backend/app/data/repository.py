@@ -25,7 +25,10 @@ from app.services.geo import frame_center, haversine_m
 
 EXPECTED_FILES = ("image_meta.json", "zones.json", "tracks.csv", "field_reports.json")
 _CORNER_KEYS: dict[str, CornerName] = {
-    "top_left": "tl", "top_right": "tr", "bottom_right": "br", "bottom_left": "bl",
+    "top_left": "tl",
+    "top_right": "tr",
+    "bottom_right": "br",
+    "bottom_left": "bl",
 }
 _IMAGE_SUFFIXES = (".jpg", ".jpeg", ".png")
 
@@ -62,8 +65,11 @@ def _load_images(raw: dict[str, Any], zones: list[Zone]) -> dict[str, ImageMeta]
     for image_id, m in raw.items():
         corners = {_CORNER_KEYS[k]: _latlon(v) for k, v in m["corner_coordinates"].items()}
         meta = ImageMeta(
-            image_id=image_id, width_px=int(m["width_px"]), height_px=int(m["height_px"]),
-            capture_time=m["capture_time"], capture_min=to_minutes(m["capture_time"]),
+            image_id=image_id,
+            width_px=int(m["width_px"]),
+            height_px=int(m["height_px"]),
+            capture_time=m["capture_time"],
+            capture_min=to_minutes(m["capture_time"]),
             corners=corners,
         )
         images[image_id] = meta.model_copy(
@@ -76,10 +82,13 @@ def _load_tracks(path: Path) -> dict[str, Track]:
     points: dict[str, list[TrackPoint]] = {}
     with path.open(encoding="utf-8", newline="") as f:
         for row in csv.DictReader(f):
-            points.setdefault(row["track_id"], []).append(TrackPoint(
-                time=row["time"], time_min=to_minutes(row["time"]),
-                position=LatLon(lat=float(row["lat"]), lon=float(row["lon"])),
-            ))
+            points.setdefault(row["track_id"], []).append(
+                TrackPoint(
+                    time=row["time"],
+                    time_min=to_minutes(row["time"]),
+                    position=LatLon(lat=float(row["lat"]), lon=float(row["lon"])),
+                )
+            )
     return {
         tid: Track(track_id=tid, points=sorted(pts, key=lambda p: p.time_min))
         for tid, pts in sorted(points.items())
@@ -90,8 +99,11 @@ def _load_reports(raw: Any) -> list[FieldReport]:
     items = raw if isinstance(raw, list) else next(v for v in raw.values() if isinstance(v, list))
     return [
         FieldReport(
-            report_id=f"REP-{i + 1:02d}", time=r["time"], time_min=to_minutes(r["time"]),
-            source=r["source"], text=r["text"],
+            report_id=f"REP-{i + 1:02d}",
+            time=r["time"],
+            time_min=to_minutes(r["time"]),
+            source=r["source"],
+            text=r["text"],
         )
         for i, r in enumerate(items)
     ]

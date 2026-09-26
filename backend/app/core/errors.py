@@ -37,6 +37,20 @@ class LLMError(SentinelError):
     error = "llm_error"
 
 
+class TuningValidationError(SentinelError):
+    """Admin tuning breaks a rule; detail is "<path>: <code> [arg]" joined with "; "."""
+
+    status_code = 422
+    error = "invalid_tuning"
+
+
+class TuningStoreError(SentinelError):
+    """The admin override file could not be written."""
+
+    status_code = 503
+    error = "tuning_store_error"
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """Map `SentinelError` subclasses to `{error, detail}` JSON responses."""
 

@@ -15,6 +15,7 @@ from collections.abc import Callable
 from typing import Any
 
 from app.agent.llm_client import ChatLLM
+from app.agent.tuning_store import with_agent_knobs
 from app.agent.watch import operator as operator_mod
 from app.agent.watch import supervisor as supervisor_mod
 from app.agent.watch import watcher as watcher_mod
@@ -34,6 +35,7 @@ from app.domain.image import ImageMeta
 from app.domain.report import ReportClaim
 from app.domain.scenario import Scenario
 from app.domain.track import MapTrack
+from app.domain.tuning import AgentTuning
 from app.domain.watch import (
     AgentTraceEvent,
     ExpectedVehicle,
@@ -59,6 +61,7 @@ from app.services.behavior import moving_groups
 from app.services.detection import Detector
 from app.services.reports import extract_claim
 from app.services.tracks import tracks_at
+from app.services.tuning import DEFAULT_TUNING, tuning_hash
 
 logger = logging.getLogger(__name__)
 EventSink = Callable[[Any], None]
@@ -77,10 +80,21 @@ class WatchRunner:
         llm: ChatLLM | None,
         on_event: EventSink,
         detector: Detector | None = None,
+        tuning: AgentTuning = DEFAULT_TUNING,
         scenario: Scenario | None = None,
     ) -> None:
         """`scenario`: scripted operator messages; its extra tracks must already be in `repo`."""
+        settings = with_agent_knobs(settings, tuning)
         self.repo, self.settings, self.llm, self.emit = repo, settings, llm, on_event
+        self.tuning = tuning
+        logger.info(
+            "watch run tuning",
+            extra={
+                "tuning_hash": tuning_hash(tuning),
+                "watcher_prompt": "admin" if tuning.prompts.watcher else "file",
+                "supervisor_prompt": "admin" if tuning.prompts.supervisor else "file",
+            },
+        )
         self.detector = detector
         self.scenario = scenario
         self._scenario_sent = False
@@ -142,6 +156,7 @@ class WatchRunner:
             trackers=self.trackers,
             alerts=self.alerts,
             rows={r.track_id: r for r in rows},
+            tuning=self.tuning,
         )
         new_claims = watch_svc.claims_between(self.claims, minute - watch_svc.TICK_MIN, minute)
 
@@ -277,7 +292,7 @@ class WatchRunner:
 
     def _rows(self, minute: int) -> list[VehicleRow]:
         zones, base = self.repo.scene.zones, self.repo.scene.base.position
-        groups = moving_groups(list(self.repo.tracks.values()), minute)
+        groups = moving_groups(list(self.repo.tracks.values()), minute, self.tuning.groups)
         rows: list[VehicleRow] = []
         for tid, track in self.repo.tracks.items():
             upto = watch_svc.track_until(track, minute)
@@ -299,6 +314,7 @@ class WatchRunner:
                     lang=self.settings.brief_language,
                     vehicle_type=entry.vehicle_type,
                     group=groups.get(tid),
+                    tuning=self.tuning,
                 )
             )
         return self._apply_expected(minute, rows)
@@ -473,11 +489,12 @@ class WatchRunner:
                     ],
                 }
             )
-        quiet = [r.track_id for r in mine if not needs_judgment(r)]
+        quiet = [r.track_id for r in mine if not needs_judgment(r, self.tuning)]
         rng = random.Random(f"{tick}|{sector}")  # seeded: the same run samples the same vehicles
         spot = sorted(rng.sample(quiet, min(self.settings.watcher_spot_checks, len(quiet))))
         return WatcherInput(
             spot_checks=spot,
+            tuning=self.tuning,
             watcher_id=wid,
             area=self.groups[wid],
             sectors=[sector],

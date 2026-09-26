@@ -12,10 +12,16 @@ from typing import Any
 from app.agent.llm_client import ChatLLM
 from app.agent.watch import tools as t
 from app.agent.watch.loop import SubmitError, fill_pattern_track_ids, run_tool_loop
-from app.agent.watch.prompts import render
+from app.agent.watch.prompts import (
+    LANGUAGE_NAMES,
+    PROMPT_FILES,
+    render_with_fallback,
+    threshold_vars,
+)
 from app.agent.watch.registry import level_index
 from app.core.timefmt import to_minutes
 from app.domain.report import FieldReport, ReportClaim
+from app.domain.tuning import AgentTuning
 from app.domain.watch import (
     WATCH_LEVELS,
     GeneratedBy,
@@ -26,11 +32,11 @@ from app.domain.watch import (
     WatcherReport,
     WatchLevel,
 )
+from app.services.tuning import DEFAULT_TUNING
 from app.services.watch import gated_level, rubric_watch_level
 
-PROMPT = "watcher_v11"
+PROMPT = PROMPT_FILES["watcher"]
 MAX_TOKENS = 12000
-LANGUAGE_NAMES = {"tr": "Turkish", "en": "English"}
 
 
 @dataclass
@@ -50,6 +56,7 @@ class WatcherInput:
     spot_checks: list[str] = field(default_factory=list)  # quiet vehicles sampled at random
     earlier_reports: list[ReportClaim] = field(default_factory=list)  # same sector, last 2 h
     judgments: dict[str, dict[str, Any]] = field(default_factory=dict)  # latest per report id
+    tuning: AgentTuning = DEFAULT_TUNING
 
 
 @dataclass
@@ -66,7 +73,7 @@ class WatcherOutcome:
     trace: list[dict[str, Any]] = field(default_factory=list)
 
 
-def needs_judgment(row: VehicleRow) -> bool:
+def needs_judgment(row: VehicleRow, tuning: AgentTuning = DEFAULT_TUNING) -> bool:
     """Rows sent in full and required in the answer; the rest are one-liners treated as LOW."""
     return (
         rubric_watch_level(row) != "LOW"
@@ -74,13 +81,13 @@ def needs_judgment(row: VehicleRow) -> bool:
         or row.pending_level is not None
         or row.notes_count > 0
         or (row.status == "new_in_sector" and row.moving)
-        or row.closing_last5_m_per_min > 100
+        or row.closing_last5_m_per_min > tuning.judgment.closing_min_m_per_min
     )
 
 
 def judged_rows(inp: WatcherInput) -> list[VehicleRow]:
     """Rows sent in full and required in the answer: by condition, plus the random spot checks."""
-    return [r for r in inp.rows if needs_judgment(r) or r.track_id in inp.spot_checks]
+    return [r for r in inp.rows if needs_judgment(r, inp.tuning) or r.track_id in inp.spot_checks]
 
 
 def _row_json(row: VehicleRow, multi_sector: bool) -> dict[str, Any]:
@@ -131,19 +138,20 @@ def build_user_message(inp: WatcherInput) -> str:
     )
 
 
-def system_prompt(ctx: t.WatchContext, watcher_id: str, area: list[str]) -> str:
-    """The watcher's fixed system prompt for its area (stable across ticks)."""
+def system_prompt(ctx: t.WatchContext, watcher_id: str, area: list[str]) -> tuple[str, list[str]]:
+    """The watcher's fixed system prompt for its area (stable across ticks) and any warnings."""
     base = ctx.repo.scene.base
-    return render(
-        PROMPT,
-        watcher_id=watcher_id,
-        sector_names=", ".join(area),
-        base_name=base.name,
-        base_lat=base.position.lat,
-        base_lon=base.position.lon,
-        max_tool_calls=ctx.settings.watcher_max_tool_calls,
-        output_language=LANGUAGE_NAMES[ctx.settings.brief_language],
-    )
+    values: dict[str, object] = {
+        "watcher_id": watcher_id,
+        "sector_names": ", ".join(area),
+        "base_name": base.name,
+        "base_lat": base.position.lat,
+        "base_lon": base.position.lon,
+        "max_tool_calls": ctx.settings.watcher_max_tool_calls,
+        "output_language": LANGUAGE_NAMES[ctx.settings.brief_language],
+        **threshold_vars(ctx.tuning),
+    }
+    return render_with_fallback(PROMPT, ctx.tuning.prompts.watcher, values)
 
 
 def _checker(ctx: t.WatchContext, inp: WatcherInput) -> Any:
@@ -265,7 +273,8 @@ async def run_watcher(
         "get_notes": lambda a: t.get_notes(ctx, a),
         "get_reports": lambda a: t.get_reports(ctx, a),
     }
-    system, user = system_prompt(ctx, inp.watcher_id, inp.area), build_user_message(inp)
+    system, prompt_warnings = system_prompt(ctx, inp.watcher_id, inp.area)
+    user = build_user_message(inp)
     loop = await run_tool_loop(
         llm,
         system=system,
@@ -283,10 +292,10 @@ async def run_watcher(
     generated_by: GeneratedBy
     if loop.output is None:
         report, generated_by = fallback_report(inp), "fallback"
-        warnings = [*loop.warnings, "rubric fallback used"]
+        warnings = [*prompt_warnings, *loop.warnings, "rubric fallback used"]
     else:
         report, clamps = enforce_rules(loop.output, inp.rows)
-        generated_by, warnings = "llm", loop.warnings + clamps
+        generated_by, warnings = "llm", prompt_warnings + loop.warnings + clamps
     return WatcherOutcome(
         report,
         generated_by,
