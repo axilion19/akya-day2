@@ -22,7 +22,7 @@ interface Props {
 const ORDER: Record<WatchLevel, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 }
 const FOCUS_TRAIL_MIN = 45 // vehicles in the operator alert
 const HIGH_TRAIL_MIN = 120 // HIGH vehicles: the whole route so far (tracks cover 2 h)
-const REVEAL_MIN = 1.5 // simulated minutes for a focus trail to draw itself in
+const REVEAL_MIN = 0.3 // simulated minutes for a new trail to draw itself in (~1 s at 1x)
 const DOT: Record<WatchLevel, number> = { LOW: 2.5, MEDIUM: 4, HIGH: 5 }
 // Identified vehicles (type from a drone-frame detection): icon in a level-colored disc, px.
 const ICON_R = 8.5
