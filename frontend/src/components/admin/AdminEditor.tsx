@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { t } from '@/i18n'
 import { changedPaths, parseProblems, setAt } from '@/lib/tuningFields'
 import { AdminToolbar } from './AdminToolbar'
+import { PromptsTab } from './PromptsTab'
 import { RiskRulesTab } from './RiskRulesTab'
 
 export type FieldErrors = Record<string, { code: string; arg: string }>
@@ -61,7 +62,9 @@ export function AdminEditor({ view, save, reset }: Props) {
         <TabsContent value="rules">
           <RiskRulesTab {...tabProps} />
         </TabsContent>
-        <TabsContent value="prompts">{null}</TabsContent>
+        <TabsContent value="prompts">
+          <PromptsTab {...tabProps} />
+        </TabsContent>
       </Tabs>
     </div>
   )
