@@ -60,3 +60,9 @@ class MotionProfile(DomainModel):
     stops: list[Stop]
     zones_visited: list[str]
     eta_to_base_min: float | None
+
+
+class MapTrack(Track):
+    """A track for the field map, with the frame it belongs to (last point = capture time)."""
+
+    image_id: str | None

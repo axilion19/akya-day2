@@ -163,7 +163,7 @@ Adjust to the official Stage 2 / code-freeze times once announced. Kaggle is sti
 | GLM API slow / errors / credit burn | Timeouts + 2 retries, disk cache keyed by input hash, token logging, template fallback brief, replay mode |
 | LLM hallucinates numbers | LLM never computes; prompt receives precomputed facts; validator rejects briefs citing unknown evidence IDs |
 | Malicious report text ("ignore previous instructions…") | Reports passed as quoted data in a delimited block; system prompt states they are untrusted; output schema-constrained |
-| Frame is oblique, not true nadir | Use organizer's convention (linear corner mapping); state it as an assumption in the brief's uncertainties |
+| Frame is oblique, not true nadir | **Decided:** treat as bird's-eye, linear corner mapping only, no perspective transform (organizer rule); state it as an assumption in the brief's uncertainties |
 | Solo time pressure | Strict phase exits, cut list above, mock-first frontend |
 
 ---

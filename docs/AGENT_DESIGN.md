@@ -31,7 +31,7 @@ Rationale for mentors: a fixed pipeline gives reproducibility, cost control and 
 |---|---|---|---|
 | 1 | `load_frame` | code | image_id → `ImageMeta` (size, capture time, corners, zone) |
 | 2 | `detect` | model | image → `Detection[]` (label, conf, bbox xywh, center px). Agent threshold `DETECT_CONF_MIN` (default 0.35), classes car/van/truck/bus. Live YOLO (`DETECTOR_KIND=ultralytics`, `DETECTOR_IMGSZ` 960); on load/inference failure the pipeline uses `PrecomputedDetector` and marks the step `warning` |
-| 3 | `georeference` | code | detections + corners → lat/lon per detection (bilinear interpolation over the 4 corners; y grows southward). Also distance & bearing to base |
+| 3 | `georeference` | code | detections + corners → lat/lon per detection (bilinear interpolation over the 4 corners; y grows southward). Also distance & bearing to base. Frames are oblique but treated as bird's-eye per the organizer rule: **no perspective transform** (decided) |
 | 4 | `match_tracks` | code | positions at capture time → `TrackMatch` per detection. Interpolate each track to capture time; cost = haversine distance; Hungarian assignment; gate `MATCH_MAX_M` (default 25 m); keep best & second-best distance as match confidence |
 | 5 | `analyze_motion` | code | matched track → `MotionProfile` |
 | 6 | `assess_reports` | code + LLM | reports near this frame in space/time → `ReportAssessment[]` |
@@ -51,7 +51,7 @@ Rationale for mentors: a fixed pipeline gives reproducibility, cost control and 
 ### Step 6 — Report handling
 Reports are one shared pool and are not linked to any frame.
 
-**Deterministic path (implemented; used when the LLM is off or fails):** `services/reports.py` extracts claims with rules (coordinates, zone names, vehicle/activity/claim keywords on ASCII-folded text), checks relevance, and derives the verdict from `ReportCheck`s: a type/activity mismatch, or neither a detection nor a track near the claimed location → CONTRADICTED; instruction-like text or a threat-lowering claim → UNVERIFIED (trust 0 for instructions); location (and type, if given) match → CORROBORATED. A report links only to detections of the claimed vehicle kind when any exist nearby.
+**Deterministic path (implemented; used when the LLM is off or fails):** `services/reports.py` extracts claims with rules (coordinates, zone names, vehicle/activity/claim keywords on ASCII-folded text), checks relevance, and derives the verdict from `ReportCheck`s: a type/activity mismatch, or neither a detection nor a track near the claimed location → CONTRADICTED; instruction-like text or a threat-lowering claim → UNVERIFIED (trust 0 for instructions); a pinpointed location match (with no type mismatch) or a type match → CORROBORATED; a zone-name match alone is not evidence → UNVERIFIED. A report links only to detections of the claimed vehicle kind when any exist nearby, and a coordinate report links only its nearest `count` (default 1) of them, because frames (100–370 m) are smaller than `REPORT_RADIUS_M`.
 
 **6a. Extraction (LLM, once per report, cached globally).** Free text → `ReportClaim`: `location` (explicit lat/lon, or zone name resolved via zones.json), `vehicle_type`, `count`, `color`, `activity` (moving / stationary / loading / unknown), `claim_kind` (SIGHTING, ALL_CLEAR, FRIENDLY_PRESENCE, TRAFFIC_NORMAL, OTHER).
 

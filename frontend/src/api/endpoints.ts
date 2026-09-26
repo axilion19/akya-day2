@@ -1,12 +1,18 @@
 import type { components } from './schema'
 import { API_BASE_URL, USE_MOCKS, apiGet, apiPost } from './client'
-import type { Analysis, Health, ImageMeta, Scene } from './types'
+import type { Analysis, Health, ImageMeta, MapReport, MapTrack, MotionProfile, Scene } from './types'
 
 type AnalysisCreated = components['schemas']['AnalysisCreated']
 
 export const getHealth = () => apiGet<Health>('/api/health')
 export const getScene = () => apiGet<Scene>('/api/scene')
 export const getImages = () => apiGet<ImageMeta[]>('/api/images')
+export const getTracks = () => apiGet<MapTrack[]>('/api/tracks')
+export const getReports = () => apiGet<MapReport[]>('/api/reports')
+export const getTrackMotion = (trackId: string, at: string) =>
+  apiGet<MotionProfile>(
+    `/api/tracks/${encodeURIComponent(trackId)}/motion?at=${encodeURIComponent(at)}`,
+  )
 export const getAnalysis = (analysisId: string) =>
   apiGet<Analysis>(`/api/analyses/${encodeURIComponent(analysisId)}`)
 export const createAnalysis = (imageId: string, forceRefresh = false) =>

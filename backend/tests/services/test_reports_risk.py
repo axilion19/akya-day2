@@ -3,9 +3,11 @@ import pytest
 from app.core.timefmt import to_minutes
 from app.domain.detection import Detection, TrackMatch
 from app.domain.geo import LatLon
+from app.domain.image import ImageMeta
 from app.domain.report import FieldReport, ReportAssessment
 from app.domain.scene import Zone
-from app.services.reports import extract_claim, has_instructions, parse_coordinates
+from app.services.geo import offset_m
+from app.services.reports import extract_claim, has_instructions, parse_coordinates, verify_claim
 from app.services.risk import level_for, score_vehicle
 
 ZONES = [Zone(name="Dogu Yolu", center=LatLon(lat=39.92184, lon=32.890542))]
@@ -39,6 +41,31 @@ def report(time: str, source: str, text: str) -> FieldReport:
             "unknown",
         ),
         ("Dogu Yolu'nda 2 otomobil park halinde bekliyor.", "car", "SIGHTING", "stationary"),
+        # Phrases seen in the organizer's real reports.
+        (
+            "39.92538N 32.87130E civarindan usse gelen otomobil bize bagli unsurdur.",
+            "car",
+            "FRIENDLY_PRESENCE",
+            "moving",
+        ),
+        (
+            "39.95238N 32.90158E konumundaki kamyon bir saatten uzun suredir yerinden ayrilmadi.",
+            "truck",
+            "SIGHTING",
+            "stationary",
+        ),
+        (
+            "Sabah devriyesi Dogu Yolu bolgesinde olagandisi bir durum bildirmedi.",
+            None,
+            "ALL_CLEAR",
+            "unknown",
+        ),
+        (
+            "Dogu Yolu bolgesinde beklenmedik bir yogunluk var; olagan trafik 4 arac civaridir.",
+            None,
+            "OTHER",
+            "unknown",
+        ),
     ],
 )
 def test_rule_extraction(text: str, vehicle: str | None, kind: str, activity: str) -> None:
@@ -105,3 +132,55 @@ def test_threat_lowering_report_never_lowers_score() -> None:
     without = score_vehicle(d, None, None, [], {})
     with_report = score_vehicle(d, None, None, [lowering], {"REP-01": claim})
     assert with_report.score == without.score
+
+
+def _frame_with_cars() -> tuple[ImageMeta, list[Detection]]:
+    tl = LatLon(lat=39.9257, lon=32.8707)
+    meta = ImageMeta(
+        image_id="img_x",
+        width_px=960,
+        height_px=540,
+        capture_time="14:10",
+        capture_min=to_minutes("14:10"),
+        corners={
+            "tl": tl,
+            "tr": LatLon(lat=tl.lat, lon=32.8721),
+            "bl": LatLon(lat=39.9250, lon=tl.lon),
+            "br": LatLon(lat=39.9250, lon=32.8721),
+        },
+        zone="Dogu Yolu",
+    )
+    dets = [
+        Detection(
+            id=f"DET-{i}",
+            label="car",
+            confidence=0.9,
+            bbox=(0, 0, 1, 1),
+            center_px=(0, 0),
+            position=offset_m(tl, 20 + 30 * i, -20),
+        )
+        for i in range(1, 4)
+    ]
+    return meta, dets
+
+
+def test_zone_name_alone_does_not_corroborate() -> None:
+    meta, dets = _frame_with_cars()
+    for text in (
+        "Dogu Yolu bolgesindeki devriyeyle telsiz baglantisi 40 dakikadir kurulamiyor.",
+        "Dun gece Dogu Yolu cevresinde dogrulanmamis bir ihbar var.",
+    ):
+        claim = extract_claim(report("13:40", "official", text), ZONES)
+        result = verify_claim(claim, meta, dets, [], {}, 300, 1.0)
+        assert result.verdict == "UNVERIFIED", text
+
+
+def test_pinpointed_claim_links_only_the_nearest_vehicle() -> None:
+    meta, dets = _frame_with_cars()
+    at = dets[1].position
+    assert at is not None
+    text = f"{at.lat:.5f}N {at.lon:.5f}E yakininda kirmizi bir otomobil var; beklemede."
+    claim = extract_claim(report("13:40", "official", text), ZONES)
+    result = verify_claim(claim, meta, dets, [], {}, 300, 1.0)
+    assert result.verdict == "CORROBORATED"
+    assert result.linked_detection_ids == ["DET-2"]

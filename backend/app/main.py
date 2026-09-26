@@ -2,9 +2,10 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from app import __version__
-from app.api.routes import analyses, health, scene
+from app.api.routes import analyses, field, health, scene
 from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
@@ -22,10 +23,13 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # /tracks is ~0.5 MB of JSON; gzip cuts it ~5x.
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
     register_exception_handlers(app)
     app.include_router(health.router, prefix="/api")
     app.include_router(scene.router, prefix="/api")
     app.include_router(analyses.router, prefix="/api")
+    app.include_router(field.router, prefix="/api")
     return app
 
 

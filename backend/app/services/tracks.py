@@ -7,7 +7,8 @@ from scipy.optimize import linear_sum_assignment
 
 from app.domain.detection import Detection, MatchConfidence, TrackMatch
 from app.domain.geo import LatLon
-from app.domain.track import Track
+from app.domain.image import ImageMeta
+from app.domain.track import MapTrack, Track
 from app.services.geo import haversine_m
 
 
@@ -96,3 +97,16 @@ def match_detections(
             confidence=_confidence(dist, second),
         )
     return [by_id.get(m.detection_id, m) for m in unmatched]
+
+
+def map_tracks(tracks: list[Track], images: list[ImageMeta]) -> list[MapTrack]:
+    """Tracks with the frame whose capture time equals their last sample (organizer's join)."""
+    by_capture = {m.capture_min: m.image_id for m in images}
+    return [
+        MapTrack(
+            track_id=t.track_id,
+            points=t.points,
+            image_id=by_capture.get(t.points[-1].time_min) if t.points else None,
+        )
+        for t in tracks
+    ]
