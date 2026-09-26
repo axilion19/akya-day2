@@ -5,5 +5,5 @@ import { tr, type Messages } from './tr'
 export const en: Messages = {
   ...tr,
   app: { name: 'SENTINEL', tagline: 'Base Security Decision Support' },
-  nav: { overview: 'Overview', map: 'Field Map', analysis: 'Analysis' },
+  nav: { overview: 'Overview', map: 'Field Map' },
 } as unknown as Messages

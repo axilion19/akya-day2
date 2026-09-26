@@ -1,7 +1,7 @@
 // All user-facing strings (Turkish, default for the jury). Keys mirror en.ts.
 export const tr = {
   app: { name: 'SENTINEL', tagline: 'Üs Güvenliği Karar Destek' },
-  nav: { overview: 'Genel Bakış', map: 'Saha Haritası', analysis: 'Analiz' },
+  nav: { overview: 'Genel Bakış', map: 'Saha Haritası' },
   status: {
     api: 'API',
     llm: 'LLM',
@@ -148,7 +148,8 @@ export const tr = {
     tabs: { map: 'Harita', motion: 'Hareket', reports: 'Raporlar' },
     notFound: 'Bu kare için analiz bulunamadı.',
     loadError: 'Analiz yüklenemedi.',
-    pickFrame: 'Kare seç',
+    back: { overview: 'Genel Bakış', map: 'Saha Haritası' },
+    analyze: 'Analiz et',
   },
   brief: {
     title: 'Risk Brifingi',
@@ -221,7 +222,6 @@ export const tr = {
       title: (id: string) => `İz ${id}`,
       close: 'Kapat',
       frame: 'Ait olduğu kare',
-      openAnalysis: 'Analizi aç',
       span: 'Kayıt aralığı',
       atTime: (at: string) => `${at} itibarıyla`,
       distance: 'Üsse mesafe',

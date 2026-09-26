@@ -10,7 +10,6 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <OverviewPage /> },
       { path: 'map', element: <FieldMapPage /> },
-      { path: 'analysis', element: <Navigate to="/analysis/img_000860" replace /> },
       { path: 'analysis/:imageId', element: <AnalysisPage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],

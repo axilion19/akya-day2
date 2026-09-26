@@ -1,4 +1,5 @@
-import { useNavigate, useParams } from 'react-router'
+import { ArrowLeft } from 'lucide-react'
+import { useLocation, useNavigate, useParams } from 'react-router'
 import { AgentTimeline } from '@/components/analysis/AgentTimeline'
 import { BriefCard } from '@/components/analysis/BriefCard'
 import { PlaybackControls } from '@/components/analysis/PlaybackControls'
@@ -6,10 +7,10 @@ import { RiskBadge } from '@/components/analysis/RiskBadge'
 import { VehicleTable } from '@/components/analysis/VehicleTable'
 import { SceneStage } from '@/components/scene/SceneStage'
 import { StepScene } from '@/components/scene/StepScene'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAnalysis } from '@/hooks/useAnalysis'
-import { useImages } from '@/hooks/useImages'
 import { usePlayback } from '@/hooks/usePlayback'
 import { t } from '@/i18n'
 import { SelectionProvider } from '@/lib/selection'
@@ -18,8 +19,14 @@ import { placeName } from '@/lib/format'
 export function AnalysisPage() {
   const { imageId = '' } = useParams()
   const navigate = useNavigate()
+  // Opened only from an overview card or a map frame card; go back to whichever one it was.
+  const from: 'overview' | 'map' = (useLocation().state as { from?: string } | null)?.from === 'map' ? 'map' : 'overview'
+  const goBack = () => {
+    const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0
+    if (idx > 0) void navigate(-1)
+    else void navigate(from === 'map' ? '/map' : '/')
+  }
   const { data: analysis, isPending, isError } = useAnalysis(imageId)
-  const { data: images = [] } = useImages()
   const pb = usePlayback(analysis?.steps.length ?? 8, imageId)
 
   if (isPending) {
@@ -43,20 +50,11 @@ export function AnalysisPage() {
       <div className="mx-auto flex max-w-[1800px] flex-col gap-5 p-6">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="sr-only">{t.analysis.pickFrame}</span>
-              <select
-                value={image.image_id}
-                onChange={(e) => navigate(`/analysis/${e.target.value}`)}
-                className="rounded-md border bg-card px-3 py-1.5 font-mono text-sm text-foreground"
-              >
-                {images.map((m) => (
-                  <option key={m.image_id} value={m.image_id}>
-                    {`${m.image_id} · ${m.zone ? placeName(m.zone) : '—'} · ${m.capture_time}`}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Button size="sm" variant="ghost" onClick={goBack} className="text-muted-foreground">
+              <ArrowLeft />
+              {t.analysis.back[from]}
+            </Button>
+            <h1 className="font-mono text-sm font-semibold">{image.image_id}</h1>
             <span className="text-sm text-muted-foreground">
               {t.analysis.zone}: <span className="text-foreground">{image.zone ? placeName(image.zone) : '—'}</span>
             </span>

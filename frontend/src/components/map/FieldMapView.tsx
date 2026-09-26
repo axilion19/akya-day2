@@ -193,7 +193,7 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
             key={frameShown.image_id}
             frame={frameShown}
             trackCount={tracks.filter((tr) => tr.image_id === frameShown.image_id).length}
-            onAnalyze={() => void navigate(`/analysis/${frameShown.image_id}`)}
+            onAnalyze={() => void navigate(`/analysis/${frameShown.image_id}`, { state: { from: 'map' } })}
             onClose={() => setSelection(null)}
           />
         </div>

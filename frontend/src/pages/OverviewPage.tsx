@@ -1,5 +1,6 @@
+import { ScanSearch } from 'lucide-react'
 import { useMemo } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { imageUrl } from '@/api/endpoints'
 import type { ImageMeta } from '@/api/types'
 import { type ImageFilter, ImageFilters } from '@/components/overview/ImageFilters'
@@ -44,6 +45,7 @@ export function OverviewPage() {
   const { data, isPending, isError } = useImages()
   const images = useMemo(() => [...(data ?? [])].sort((a, b) => a.capture_min - b.capture_min), [data])
   const { filter, bounds, setFilter, reset } = useImageFilter(images)
+  const navigate = useNavigate()
 
   const zoneCounts = useMemo(() => {
     const counts = new Map<string, number>()
@@ -87,17 +89,26 @@ export function OverviewPage() {
       )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
         {shown.map((m) => (
-          <Link
-            key={m.image_id}
-            to={`/analysis/${m.image_id}`}
-            className="group overflow-hidden rounded-lg border bg-card transition-colors hover:border-primary"
-          >
-            <img src={imageUrl(m.image_id)} alt={m.image_id} loading="lazy" className="aspect-video w-full object-cover opacity-90 group-hover:opacity-100" />
-            <div className="flex items-center justify-between px-3 py-2 text-xs">
-              <span className="font-mono">{m.image_id}</span>
-              <span className="text-muted-foreground">{`${m.zone ? placeName(m.zone) : NO_ZONE} · ${m.capture_time}`}</span>
+          <article key={m.image_id} className="overflow-hidden rounded-lg border bg-card">
+            <div className="relative">
+              <img src={imageUrl(m.image_id)} alt={m.image_id} loading="lazy" className="aspect-video w-full object-cover" />
+              <Button
+                size="xs"
+                onClick={() => void navigate(`/analysis/${m.image_id}`, { state: { from: 'overview' } })}
+                className="absolute right-2 bottom-2 shadow-md"
+              >
+                <ScanSearch />
+                {t.analysis.analyze}
+              </Button>
             </div>
-          </Link>
+            <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
+              <span className="shrink-0 font-mono">{m.image_id}</span>
+              <span className="flex min-w-0 gap-1 text-muted-foreground">
+                <span className="truncate">{m.zone ? placeName(m.zone) : NO_ZONE}</span>
+                <span className="shrink-0 font-mono">· {m.capture_time}</span>
+              </span>
+            </div>
+          </article>
         ))}
       </div>
     </div>
