@@ -82,7 +82,7 @@ make gen-types   # from repo root; exports OpenAPI from the backend app without 
 - LLM text is shown short (`concise`, first sentence) with "devamı" to open the full text; every vehicle id (`T0xxx`) in any LLM text is a link (`AgentText` / `LinkedIds`, `useVehicleLink`).
 - `lib/watchDemo.ts` only indexes and schedules events; levels, reasons and alerts are exactly what the agents wrote.
 - Side panel has three tabs (four with a scenario's Konuşma tab). **Baş Denetçi** is the operator view of a real-time caution system: threat level, one-line situation, the alert (urgency, headline, short description, vehicles) and the alert log; nothing else (patterns, level changes and traces are analyst detail). **Gözcüler** holds the watcher cards with their traces. **Raporlar** lists every judged field report (verdict, the model's credibility, contradictions, deception). Contradicted reports of the tick also appear on Baş Denetçi, since contradictory reports are part of the operator's picture.
-- Deep links for the demo script: `/watch?at=<HH:MM>&vehicle=<track_id>&tab=watchers|reports` (`at` works on every page).
+- Deep links for the demo script: `/watch?at=<HH:MM>&vehicle=<track_id>&tab=watchers|reports|chat` (`at` works on every page).
 
 ## Master clock
 - One simulated clock for the whole app (`MasterClockProvider` in `AppShell`, read with `useMasterClock`); pages have no clock of their own. It plays like a live stream: it opens live at 10:05 (just before the first recorded agent tick) and plays; the live edge moves forward while playing; the viewer can go back (behind live) but never past the live edge. 1x = one 5-minute tick per 20 s, speeds 1/2/4/8/16x. Space plays/pauses, arrow keys step 5 minutes, `?at=HH:MM` opens at that minute.
