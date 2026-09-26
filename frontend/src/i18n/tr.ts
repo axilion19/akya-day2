@@ -173,6 +173,16 @@ export const tr = {
     title: 'Operasyon Genel Bakış',
     subtitle: (n: number) => `${n} kare · analiz etmek için birini seçin`,
     empty: 'Kare bulunamadı. Veri klasörünü kontrol edin.',
+    filters: {
+      label: 'Kare filtreleri',
+      time: 'Çekim saati',
+      from: 'başlangıç',
+      to: 'bitiş',
+      zone: 'Konum',
+      frames: 'kare',
+      clear: 'Temizle',
+      noMatch: 'Bu filtrelere uyan kare yok.',
+    },
   },
   fieldMap: {
     title: 'Harekât Sahası',
