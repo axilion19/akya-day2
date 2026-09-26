@@ -34,7 +34,9 @@ DEFAULT_BEHAVIOR = BehaviorTuning(
 )
 
 
-def behavior_class(points: list[TrackPoint], base: LatLon) -> BehaviorClass:
+def behavior_class(
+    points: list[TrackPoint], base: LatLon, cfg: BehaviorTuning = DEFAULT_BEHAVIOR
+) -> BehaviorClass:
     """Static classification of a route so far (see the overview figure for the classes)."""
     if len(points) < 3:
         return "unknown"
@@ -45,15 +47,15 @@ def behavior_class(points: list[TrackPoint], base: LatLon) -> BehaviorClass:
     for a, b in pairwise(bearings):
         unwrapped += (b - a + 180) % 360 - 180
         sweep = max(sweep, abs(unwrapped))
-    if path < PARKED_MAX_PATH_M:
+    if path < cfg.parked_max_path_m:
         return "parked"
-    if dists[0] < LEAVING_START_M and dists[-1] - dists[0] > LEAVING_GAIN_M:
+    if dists[0] < cfg.leaving_start_m and dists[-1] - dists[0] > cfg.leaving_gain_m:
         return "leaving_base"
-    if sweep > LOOP_SWEEP_DEG:
+    if sweep > cfg.loop_sweep_deg:
         return "loops_around_base"
-    if path > ORBIT_MIN_PATH_M and max(dists) - min(dists) < ORBIT_MAX_RANGE_M:
+    if path > cfg.orbit_min_path_m and max(dists) - min(dists) < cfg.orbit_max_range_m:
         return "fixed_range_orbit"
-    if dists[0] - dists[-1] > APPROACH_GAIN_M:
+    if dists[0] - dists[-1] > cfg.approach_gain_m:
         return "steady_approach"
     return "mixed_transit"
 
@@ -70,7 +72,9 @@ DEFAULT_GROUPS = GroupTuning(
 )
 
 
-def moving_groups(tracks: list[Track], minute: int) -> dict[str, list[str]]:
+def moving_groups(
+    tracks: list[Track], minute: int, cfg: GroupTuning = DEFAULT_GROUPS
+) -> dict[str, list[str]]:
     """Track id -> ids of the vehicles moving with it (itself included), for groups of 2+.
     Only tracks with a sample exactly at `minute` take part."""
     recent: dict[str, list[TrackPoint]] = {}
@@ -78,7 +82,10 @@ def moving_groups(tracks: list[Track], minute: int) -> dict[str, list[str]]:
         pts = [p for p in tr.points if p.time_min <= minute][-GROUP_SAMPLES:]
         if len(pts) < GROUP_SAMPLES or pts[-1].time_min != minute:
             continue
-        if sum(haversine_m(a.position, b.position) for a, b in pairwise(pts)) < GROUP_MIN_MOVE_M:
+        if (
+            sum(haversine_m(a.position, b.position) for a, b in pairwise(pts))
+            < cfg.group_min_move_m
+        ):
             continue
         recent[tr.track_id] = pts
     parent = {t: t for t in recent}
@@ -91,7 +98,7 @@ def moving_groups(tracks: list[Track], minute: int) -> dict[str, list[str]]:
 
     for a, b in combinations(recent, 2):
         together = all(
-            haversine_m(pa.position, pb.position) <= GROUP_RADIUS_M
+            haversine_m(pa.position, pb.position) <= cfg.group_radius_m
             for pa, pb in zip(recent[a], recent[b], strict=True)
         )
         if together:

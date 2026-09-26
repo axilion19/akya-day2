@@ -73,37 +73,46 @@ def level_ceiling(
     eta_min: float | None,
     behavior: BehaviorClass,
     group_size: int = 1,
+    cfg: CeilingTuning = DEFAULT_CEILING,
+    large_group: int = LARGE_GROUP,
 ) -> WatchLevel:
-    """Highest level a vehicle may get (m, m/s, degrees, minutes):
-    - within AT_BASE_M: HIGH;
-    - looping around / orbiting the base: HIGH within PATTERN_HIGH_M, else MEDIUM;
-    - approaching now (closing, pointed at the base): HIGH if within APPROACH_HIGH_M or
-      APPROACH_HIGH_ETA_MIN; MEDIUM if faster than APPROACH_MEDIUM_MS and within
-      APPROACH_MEDIUM_M or APPROACH_MEDIUM_ETA_MIN;
-    - moving in a large group (LARGE_GROUP+ vehicles together): MEDIUM;
+    """Highest level a vehicle may get (m, m/s, degrees, minutes); thresholds from `cfg`:
+    - within at_base_m: HIGH;
+    - looping around / orbiting the base: HIGH within pattern_high_m, else MEDIUM;
+    - approaching now (closing, pointed at the base): HIGH if within approach_high_m or
+      approach_high_eta_min; MEDIUM if faster than approach_medium_ms and within
+      approach_medium_m or approach_medium_eta_min;
+    - moving in a large group (`large_group`+ vehicles together): MEDIUM;
     - anything else (other approaches, stops, parked, transit): LOW."""
-    if dist_m <= AT_BASE_M:
+    if dist_m <= cfg.at_base_m:
         return "HIGH"
     if behavior in DANGER_PATTERNS:
-        return "HIGH" if dist_m <= PATTERN_HIGH_M else "MEDIUM"
-    pointed = heading_vs_base_deg is not None and heading_vs_base_deg <= APPROACH_HEADING_DEG
+        return "HIGH" if dist_m <= cfg.pattern_high_m else "MEDIUM"
+    pointed = heading_vs_base_deg is not None and heading_vs_base_deg <= cfg.approach_heading_deg
     if closing_now and pointed:
-        if dist_m <= APPROACH_HIGH_M or (eta_min is not None and eta_min <= APPROACH_HIGH_ETA_MIN):
+        if dist_m <= cfg.approach_high_m or (
+            eta_min is not None and eta_min <= cfg.approach_high_eta_min
+        ):
             return "HIGH"
-        near = dist_m <= APPROACH_MEDIUM_M or (
-            eta_min is not None and eta_min <= APPROACH_MEDIUM_ETA_MIN
+        near = dist_m <= cfg.approach_medium_m or (
+            eta_min is not None and eta_min <= cfg.approach_medium_eta_min
         )
-        if speed_ms >= APPROACH_MEDIUM_MS and near:
+        if speed_ms >= cfg.approach_medium_ms and near:
             return "MEDIUM"
-    return "MEDIUM" if group_size >= LARGE_GROUP else "LOW"
+    return "MEDIUM" if group_size >= large_group else "LOW"
 
 
 def motion_ceiling(
-    motion: MotionProfile | None, dist_m: float | None, behavior: BehaviorClass, group_size: int = 1
+    motion: MotionProfile | None,
+    dist_m: float | None,
+    behavior: BehaviorClass,
+    group_size: int = 1,
+    cfg: CeilingTuning = DEFAULT_CEILING,
+    large_group: int = LARGE_GROUP,
 ) -> WatchLevel:
     """`level_ceiling` for a frame vehicle: closing now = moving at the base in the last 10 min."""
     if motion is None:
-        return "HIGH" if dist_m is not None and dist_m <= AT_BASE_M else "MEDIUM"
+        return "HIGH" if dist_m is not None and dist_m <= cfg.at_base_m else "MEDIUM"
     heading_diff = (
         None
         if motion.heading_deg is None
@@ -118,6 +127,8 @@ def motion_ceiling(
         motion.eta_to_base_min,
         behavior,
         group_size,
+        cfg,
+        large_group,
     )
 
 
@@ -128,20 +139,23 @@ def cap_level(level: RiskLevel, ceiling: WatchLevel) -> RiskLevel:
     return min(level, ceiling, key=RISK_LEVELS.index)
 
 
-def group_factor(group_size: int) -> RiskFactor:
-    """Points for moving in a large group (LARGE_GROUP+ vehicles together)."""
-    points = GROUP_POINTS if group_size >= LARGE_GROUP else 0
+def group_factor(
+    group_size: int, rubric: RubricTuning = DEFAULT_RUBRIC, large_group: int = LARGE_GROUP
+) -> RiskFactor:
+    """Points for moving in a large group (`large_group`+ vehicles together)."""
+    points = rubric.group_points if group_size >= large_group else 0
     return RiskFactor(name="group", points=points, detail=f"{group_size} moving together")
 
 
-def pattern_factor(behavior: BehaviorClass) -> RiskFactor:
+def pattern_factor(behavior: BehaviorClass, rubric: RubricTuning = DEFAULT_RUBRIC) -> RiskFactor:
     """Points for the danger patterns (looping around / orbiting the base)."""
-    return RiskFactor(name="pattern", points=PATTERN_POINTS.get(behavior, 0), detail=behavior)
+    points = rubric.pattern_points.model_dump().get(behavior, 0)
+    return RiskFactor(name="pattern", points=points, detail=behavior)
 
 
-def level_for(score: int) -> RiskLevel:
-    """0-24 LOW, 25-49 MEDIUM, 50-74 HIGH, 75-100 CRITICAL."""
-    return RISK_LEVELS[min(3, score // 25)]
+def level_for(score: int, rubric: RubricTuning = DEFAULT_RUBRIC) -> RiskLevel:
+    """score // level_step -> LOW, MEDIUM, HIGH, CRITICAL (default step 25: 0-24 LOW, ...)."""
+    return RISK_LEVELS[min(3, score // rubric.level_step)]
 
 
 def _tier(value: float, tiers: tuple[tuple[float, int], ...], below: bool) -> int:
@@ -151,32 +165,38 @@ def _tier(value: float, tiers: tuple[tuple[float, int], ...], below: bool) -> in
     return 0
 
 
-def distance_factor(dist_m: float) -> RiskFactor:
+def distance_factor(dist_m: float, rubric: RubricTuning = DEFAULT_RUBRIC) -> RiskFactor:
     """Points for the current distance to the base (m)."""
-    pts = _tier(dist_m, ((1000, 30), (2000, 20), (4000, 10)), below=True)
+    tiers = tuple((t.limit, t.points) for t in rubric.distance_tiers)
+    pts = _tier(dist_m, tiers, below=True)
     return RiskFactor(name="distance_to_base", points=pts, detail=f"{dist_m:.0f} m")
 
 
-def motion_factors(motion: MotionProfile) -> list[RiskFactor]:
+def motion_factors(
+    motion: MotionProfile, rubric: RubricTuning = DEFAULT_RUBRIC
+) -> list[RiskFactor]:
     """Approach-rate, heading-at-base and long-stop points from a track's motion."""
     factors: list[RiskFactor] = []
     rate = motion.approach_rate_m_per_min
     factors.append(
         RiskFactor(
             name="approach_rate",
-            points=_tier(rate, ((80, 15), (50, 8)), below=False),
+            points=_tier(
+                rate, tuple((t.limit, t.points) for t in rubric.approach_rate_tiers), below=False
+            ),
             detail=f"{rate:+.1f} m/min over 60 min",
         )
     )
     pointing = (
         motion.heading_deg is not None
         and motion.last10_speed_ms >= MOVING_MS
-        and angle_diff_deg(motion.heading_deg, motion.bearing_to_base_deg) < HEADING_TOLERANCE_DEG
+        and angle_diff_deg(motion.heading_deg, motion.bearing_to_base_deg)
+        < rubric.heading_tolerance_deg
     )
     factors.append(
         RiskFactor(
             name="heading_to_base",
-            points=5 if pointing else 0,
+            points=rubric.heading_points if pointing else 0,
             detail=(
                 f"heading {motion.heading_deg:.0f}°, base at {motion.bearing_to_base_deg:.0f}°"
                 if motion.heading_deg is not None
@@ -187,14 +207,19 @@ def motion_factors(motion: MotionProfile) -> list[RiskFactor]:
     long_stops = [
         s
         for s in motion.stops
-        if s.duration_min >= LONG_STOP_MIN and s.distance_to_base_m <= STOP_NEAR_BASE_M
+        if s.duration_min >= rubric.long_stop_min
+        and s.distance_to_base_m <= rubric.stop_near_base_m
     ]
-    stop_pts = 0 if not long_stops else 5 + (5 if len(long_stops) > 1 else 0)
+    extra = rubric.stop_points_extra if len(long_stops) > 1 else 0
+    stop_pts = 0 if not long_stops else rubric.stop_points_first + extra
     factors.append(
         RiskFactor(
             name="stops_near_base",
             points=stop_pts,
-            detail=f"{len(long_stops)} stop(s) ≥ {LONG_STOP_MIN} min within 6 km",
+            detail=(
+                f"{len(long_stops)} stop(s) ≥ {rubric.long_stop_min:g} min"
+                f" within {rubric.stop_near_base_m / 1000:g} km"
+            ),
         )
     )
     return factors
@@ -208,24 +233,27 @@ def score_vehicle(
     claims: dict[str, ReportClaim],
     behavior: BehaviorClass = "unknown",
     group_size: int = 1,
+    rubric: RubricTuning = DEFAULT_RUBRIC,
+    ceiling: CeilingTuning = DEFAULT_CEILING,
+    large_group: int = LARGE_GROUP,
 ) -> VehicleRisk:
     """Score one vehicle 0-100 with an explicit factor breakdown."""
     factors: list[RiskFactor] = []
     dist = motion.dist_now_m if motion else detection.distance_to_base_m
     if dist is not None:
-        factors.append(distance_factor(dist))
+        factors.append(distance_factor(dist, rubric))
 
     if motion is not None:
-        factors.extend(motion_factors(motion))
-        factors.append(pattern_factor(behavior))
-        factors.append(group_factor(group_size))
+        factors.extend(motion_factors(motion, rubric))
+        factors.append(pattern_factor(behavior, rubric))
+        factors.append(group_factor(group_size, rubric, large_group))
     else:
         factors.append(RiskFactor(name="no_track", points=0, detail="unknown history"))
 
     factors.append(
         RiskFactor(
             name="vehicle_type",
-            points=TYPE_POINTS.get(detection.label, 0),
+            points=rubric.type_points.model_dump().get(detection.label, 0),
             detail=detection.label,
         )
     )
@@ -247,11 +275,11 @@ def score_vehicle(
         )
 
     score = min(100, sum(f.points for f in factors))
-    ceiling = motion_ceiling(motion, dist, behavior, group_size)
-    level = cap_level(level_for(score), ceiling)
-    if level != level_for(score):
+    cap = motion_ceiling(motion, dist, behavior, group_size, ceiling, large_group)
+    level = cap_level(level_for(score, rubric), cap)
+    if level != level_for(score, rubric):
         factors.append(
-            RiskFactor(name="ceiling", points=0, detail=f"score {score}: capped at {ceiling}")
+            RiskFactor(name="ceiling", points=0, detail=f"score {score}: capped at {cap}")
         )
     return VehicleRisk(
         detection_id=detection.id,
