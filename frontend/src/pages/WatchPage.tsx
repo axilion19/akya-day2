@@ -25,6 +25,7 @@ import {
   playheadAt,
   progress,
   toMinute,
+  vehicleTypes,
   verdictHistory,
 } from '@/lib/watchDemo'
 
@@ -125,6 +126,7 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
               checks={tick.start.checks}
               levels={levels}
               focus={alertFocus(model, head)}
+              types={vehicleTypes(model, head)}
               selectedId={selected}
               onSelect={setSelected}
               onOpenFrame={(id) => void navigate(`/analysis/${id}`)}

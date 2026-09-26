@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { t } from '@/i18n'
 import type { VehicleState, verdictHistory } from '@/lib/watchDemo'
 import { AgentText } from './AgentText'
+import { VehicleTypeIcon } from './VehicleTypeIcon'
 
 interface Props {
   trackId: string
@@ -20,7 +21,10 @@ export function VehiclePanel({ trackId, state, row, history, onClose }: Props) {
   return (
     <aside className="absolute top-[5.25rem] left-3 flex max-h-[calc(100%-6.5rem)] w-96 flex-col gap-3 overflow-auto rounded-lg border bg-card/95 p-4 shadow-xl backdrop-blur animate-in fade-in slide-in-from-left-2 duration-200">
       <header className="flex items-center justify-between">
-        <h2 className="font-mono text-sm font-semibold">{v.title(trackId)}</h2>
+        <h2 className="flex items-center gap-2 font-mono text-sm font-semibold">
+          <VehicleTypeIcon vehicleType={row?.vehicle_type} className="size-4 text-muted-foreground" />
+          {v.title(trackId)}
+        </h2>
         <div className="flex items-center gap-2">
           {state && <RiskBadge level={state.level} />}
           {state?.pending && <span className="text-[11px] text-amber-700">{t.watch.pending}</span>}

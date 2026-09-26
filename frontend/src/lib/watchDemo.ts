@@ -192,3 +192,14 @@ export function alertFocus(model: DemoModel, head: Playhead): Map<string, number
   }
   return new Map()
 }
+
+/** Vehicle types known at the playhead: from drone-frame detections matched to a track, once
+ *  the frame has been analysed (a type stays known afterwards). */
+export function vehicleTypes(model: DemoModel, head: Playhead): Map<string, string> {
+  const types = new Map<string, string>()
+  model.ticks.slice(0, head.index + 1).forEach((tv, i) => {
+    if (i === head.index && head.elapsed < SCHEDULE.frame) return
+    for (const f of tv.frames) for (const d of f.detections) if (d.track_id) types.set(d.track_id, d.label)
+  })
+  return types
+}
