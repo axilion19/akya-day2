@@ -3,7 +3,9 @@ import type { WatchEventOf } from '@/api/types'
 import { RiskBadge } from '@/components/analysis/RiskBadge'
 import { t } from '@/i18n'
 import { cn } from '@/lib/utils'
+import type { PassedReport } from '@/lib/watchDemo'
 import { AgentText, LinkedIds } from './AgentText'
+import { ReportRef } from './ReportRef'
 
 type Alert = WatchEventOf<'operator_alert'>['alert']
 
@@ -15,6 +17,7 @@ interface Props {
   decision: WatchEventOf<'supervisor_decision'> | undefined
   alerts: Alert[] // this tick's alerts
   history: Alert[] // earlier alerts, newest first
+  reports: PassedReport[] // field reports the watchers passed on this tick
   progress: number // supervisor text, 0..1
   alertProgress: number // operator alert, 0..1
 }
@@ -32,7 +35,7 @@ const URGENCY_TEXT: Record<string, string> = {
 
 /** Operator view: current threat, one-line situation, the alert to act on, and the alert log.
  *  Internal detail (patterns, level changes, traces) is left out on purpose. */
-export function SupervisorCard({ tick, decision, alerts, history, progress, alertProgress }: Props) {
+export function SupervisorCard({ tick, decision, alerts, history, reports, progress, alertProgress }: Props) {
   const w = t.watch
   const d = decision?.decision
   return (
@@ -51,6 +54,30 @@ export function SupervisorCard({ tick, decision, alerts, history, progress, aler
         ))}
       {progress >= 1 && alertProgress >= 1 && alerts.length === 0 && (
         <p className="rounded-lg border border-dashed bg-card p-3 text-xs text-muted-foreground">{w.noAlerts}</p>
+      )}
+
+      {progress > 0 && reports.length > 0 && (
+        <section className="flex flex-col gap-1.5 rounded-lg border bg-card px-3 py-2">
+          <h3 className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">{w.passedReports}</h3>
+          {reports.map((p) => (
+            <ReportRef
+              key={p.report.report_id}
+              report={p.report}
+              detail={
+                <span className="text-foreground/80">
+                  {p.trackIds.length > 0 && (
+                    <>
+                      {w.report.about} <LinkedIds text={p.trackIds.join(' ')} />
+                      {p.why ? ' · ' : ''}
+                    </>
+                  )}
+                  {p.why && <LinkedIds text={p.why} />}
+                  <span className="text-muted-foreground"> · {w.report.from(p.watchers.join(', '))}</span>
+                </span>
+              }
+            />
+          ))}
+        </section>
       )}
 
       {history.length > 0 && (

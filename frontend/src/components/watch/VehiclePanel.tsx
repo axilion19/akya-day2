@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { t } from '@/i18n'
 import type { VehicleState, verdictHistory } from '@/lib/watchDemo'
 import { AgentText } from './AgentText'
+import { ReportRef } from './ReportRef'
 import { VehicleTypeIcon } from './VehicleTypeIcon'
 
 interface Props {
@@ -56,6 +57,9 @@ export function VehiclePanel({ trackId, state, row, history, onClose }: Props) {
               </span>
               <AgentText text={h.verdict.reason} max={110} />
               {h.verdict.note && <AgentText text={`${v.note}: ${h.verdict.note}`} max={110} className="text-muted-foreground italic" />}
+              {h.reports.map((rep) => (
+                <ReportRef key={rep.report_id} report={rep} />
+              ))}
             </div>
           ))}
         </div>

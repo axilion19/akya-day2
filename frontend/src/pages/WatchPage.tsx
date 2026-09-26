@@ -22,6 +22,7 @@ import {
   TICK_MIN,
   finishedAgents,
   levelsAt,
+  passedReports,
   playheadAt,
   progress,
   toMinute,
@@ -168,6 +169,7 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
                     decision={head.elapsed >= SCHEDULE.supervisor.start ? tick.supervisor : previous?.supervisor}
                     alerts={head.elapsed >= SCHEDULE.supervisor.start ? tick.alerts.map((e) => e.alert) : []}
                     history={history}
+                    reports={head.elapsed >= SCHEDULE.supervisor.start ? passedReports(tick.watchers) : []}
                     progress={head.elapsed >= SCHEDULE.supervisor.start ? supProgress : previous ? 1 : 0}
                     alertProgress={progress(head.elapsed, SCHEDULE.alert)}
                   />

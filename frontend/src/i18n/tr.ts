@@ -371,6 +371,14 @@ export const tr = {
     repair: 'Kod → model',
     llmCall: (n: number, s: string) => `LLM çağrısı ${n} · ${s}`,
     input: 'Modele giden mesaj',
+    passedReports: 'Gözcülerden gelen saha raporları',
+    forwarded: 'Denetçiye iletilen raporlar',
+    report: {
+      source: { official: 'resmi', third_party: '3. taraf' } as Record<string, string>,
+      untrusted: 'Doğrulanmamış rapor metni',
+      about: 'ilgili',
+      from: (ids: string) => `iletti: ${ids}`,
+    },
     vehicle: {
       title: (id: string) => `Araç ${id}`,
       close: 'Kapat',
@@ -378,6 +386,7 @@ export const tr = {
       facts: 'Kodun hesapladığı',
       history: 'Gözcü kararları',
       note: 'not',
+      reports: 'raporlar',
       notSeen: 'Bu araç henüz bir gözcü tarafından değerlendirilmedi.',
     },
   },

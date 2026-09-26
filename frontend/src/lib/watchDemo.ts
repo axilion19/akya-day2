@@ -1,6 +1,6 @@
 // Groups a recorded watch run's events by tick for the demo player. No domain logic: levels,
 // reasons and alerts are exactly what the agents produced; this only indexes them.
-import type { VehicleRow, WatchEvent, WatchEventOf, WatchLevel } from '@/api/types'
+import type { FieldReport, VehicleRow, WatchEvent, WatchEventOf, WatchLevel } from '@/api/types'
 
 export interface TickView {
   tick: string
@@ -99,6 +99,30 @@ export function buildDemoModel(events: WatchEvent[]): DemoModel {
   return { ticks, levelsAfter, rowsUpTo }
 }
 
+/** A field report watchers passed to the supervisor in one tick: tied to vehicles, forwarded
+ *  with a reason, or both. Older recordings have no `reports`; they yield nothing. */
+export interface PassedReport {
+  report: FieldReport
+  watchers: string[]
+  trackIds: string[]
+  why: string | null
+}
+
+export function passedReports(watchers: WatchEventOf<'watcher_report'>[]): PassedReport[] {
+  const out = new Map<string, PassedReport>()
+  for (const w of watchers) {
+    for (const report of w.reports ?? []) {
+      const id = report.report_id
+      const item = out.get(id) ?? { report, watchers: [], trackIds: [], why: null }
+      if (!item.watchers.includes(w.watcher)) item.watchers.push(w.watcher)
+      for (const v of w.report.vehicles) if (v.report_ids?.includes(id) && !item.trackIds.includes(v.track_id)) item.trackIds.push(v.track_id)
+      item.why ??= w.report.forwarded_reports?.find((f) => f.report_id === id)?.why ?? null
+      out.set(id, item)
+    }
+  }
+  return [...out.values()].sort((a, b) => a.report.time_min - b.report.time_min)
+}
+
 /** Every watcher verdict about one vehicle up to a tick, oldest first; on the last tick only
  *  verdicts of agents in `done` (those that finished writing). */
 export function verdictHistory(model: DemoModel, trackId: string, index: number, done?: Set<string>) {
@@ -108,7 +132,13 @@ export function verdictHistory(model: DemoModel, trackId: string, index: number,
       .flatMap((w) =>
         w.report.vehicles
           .filter((v) => v.track_id === trackId)
-          .map((v) => ({ tick: tv.tick, watcher: w.watcher, sector: w.sectors[0] ?? '', verdict: v })),
+          .map((v) => ({
+            tick: tv.tick,
+            watcher: w.watcher,
+            sector: w.sectors[0] ?? '',
+            verdict: v,
+            reports: (w.reports ?? []).filter((r) => v.report_ids?.includes(r.report_id)),
+          })),
       ),
   )
 }
