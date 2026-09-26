@@ -48,24 +48,43 @@ _ACTIVITY_WORDS: tuple[tuple[str, Activity], ...] = (
     ("yuk indir", "loading"),
     ("park", "stationary"),
     ("duruyor", "stationary"),
+    ("durdugu", "stationary"),
     ("bekliyor", "stationary"),
+    ("beklemede", "stationary"),
+    ("hareketsiz", "stationary"),
+    ("yerinden ayrilmadi", "stationary"),
     ("sabit", "stationary"),
     ("hareket halinde", "moving"),
     ("ilerliyor", "moving"),
+    ("ilerleyen", "moving"),
+    ("usse gelen", "moving"),
     ("yaklasiyor", "moving"),
     ("seyir halinde", "moving"),
+    ("transit", "moving"),
+    ("uzaklasiyor", "moving"),
     ("konvoy", "moving"),
 )
+# Regexes on normalized text; first match wins, so specific phrases come before generic words.
 _KIND_WORDS: tuple[tuple[str, ClaimKind], ...] = (
-    ("dost", "FRIENDLY_PRESENCE"),
-    ("tatbikat", "FRIENDLY_PRESENCE"),
-    ("endise yok", "ALL_CLEAR"),
-    ("tehdit yok", "ALL_CLEAR"),
-    ("guvenli", "ALL_CLEAR"),
-    ("temiz", "ALL_CLEAR"),
-    ("sorun yok", "ALL_CLEAR"),
-    ("olagan", "TRAFFIC_NORMAL"),
-    ("normal", "TRAFFIC_NORMAL"),
+    (r"\bdost\b", "FRIENDLY_PRESENCE"),
+    (r"tatbikat", "FRIENDLY_PRESENCE"),
+    (r"bize bagli", "FRIENDLY_PRESENCE"),
+    (r"kimlik teyidi", "FRIENDLY_PRESENCE"),
+    (r"planli ikmal", "FRIENDLY_PRESENCE"),
+    (r"teyitli", "FRIENDLY_PRESENCE"),
+    (r"onceden bildiril", "FRIENDLY_PRESENCE"),
+    (r"endise yok", "ALL_CLEAR"),
+    (r"tehdit yok", "ALL_CLEAR"),
+    (r"guvenli", "ALL_CLEAR"),
+    (r"temiz", "ALL_CLEAR"),
+    (r"sorun yok", "ALL_CLEAR"),
+    (r"durum bildirmedi", "ALL_CLEAR"),
+    # Density anomaly ("beklenmedik yogunluk; olagan trafik 4 arac") must not read as normal.
+    (r"beklenmedik", "OTHER"),
+    (r"yogunluk", "OTHER"),
+    # "olagan" but not "olagandisi" / "olagandan".
+    (r"\bolagan\b", "TRAFFIC_NORMAL"),
+    (r"\bnormal\b", "TRAFFIC_NORMAL"),
 )
 _INSTRUCTION_WORDS = (
     "talimat",
@@ -102,7 +121,7 @@ def extract_claim(report: FieldReport, zones: list[Zone]) -> ReportClaim:
     """Rule-based claim extraction (fallback for the LLM extractor, AGENT_DESIGN §3 6a)."""
     norm = normalize(report.text)
     vehicle = next((v for word, v in _VEHICLE_WORDS if re.search(rf"\b{word}", norm)), None)
-    kind: ClaimKind = next((k for word, k in _KIND_WORDS if word in norm), "OTHER")
+    kind: ClaimKind = next((k for pat, k in _KIND_WORDS if re.search(pat, norm)), "OTHER")
     location = parse_coordinates(report.text)
     if kind == "OTHER" and (vehicle or location):
         kind = "SIGHTING"
@@ -187,6 +206,10 @@ def verify_claim(
     near.sort(key=lambda item: item[1])
     if claim.vehicle_type:  # link only vehicles of the claimed kind when any exist nearby
         near = [(d, m) for d, m in near if _same_kind(claim.vehicle_type, d.label)] or near
+    if claim.location is not None:
+        # A pinpointed claim is about `count` vehicles (default 1), not every vehicle in 300 m:
+        # frames are only 100-370 m wide, so the radius alone would link the whole frame.
+        near = near[: max(1, claim.count or 1)]
     linked = [d for d, _ in near]
 
     if claim.location is not None:
@@ -269,7 +292,10 @@ def verify_claim(
         verdict = "CONTRADICTED"
     elif lowers:
         verdict = "UNVERIFIED"  # threat-lowering claims we cannot verify never lower the score
-    elif status.get("location") == "match" and status.get("type") != "mismatch":
+    elif (claim.location is not None and status.get("location") == "match") or status.get(
+        "type"
+    ) == "match":
+        # A zone-name match alone is not evidence: it needs a pinpointed location or a type match.
         verdict = "CORROBORATED"
     else:
         verdict = "UNVERIFIED"
@@ -285,3 +311,4 @@ def verify_claim(
         lowers_threat=lowers,
         instructions=instructions,
     )
+
