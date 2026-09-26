@@ -128,7 +128,7 @@ function WatchPlayer({ model, field, initialVehicle, initialTab }: PlayerProps) 
               expected={new Set(announced.keys())}
               selectedId={selected}
               onSelect={setSelected}
-              onOpenFrame={(id) => void navigate(`/analysis/${id}`)}
+              onOpenFrame={(id) => void navigate(`/analysis/${id}`, { state: { from: 'watch' } })}
             />
             <div className="pointer-events-none absolute top-3 left-3 rounded-md border bg-card/90 px-3 py-1.5 shadow-sm backdrop-blur">
               <p className="text-[11px] text-muted-foreground">{complete ? w.evaluated(tick.tick) : w.evaluating(tick.tick)}</p>
@@ -145,7 +145,7 @@ function WatchPlayer({ model, field, initialVehicle, initialTab }: PlayerProps) 
             )}
           </div>
 
-          <aside className="flex w-[27rem] shrink-0 flex-col">
+          <aside className="flex w-[27rem] shrink-0 flex-col rounded-lg border bg-sidebar p-2">
             <Tabs defaultValue={initialTab} className="flex min-h-0 flex-1 flex-col">
               <TabsList className="w-full">
                 <TabsTrigger value="supervisor" className="gap-2">

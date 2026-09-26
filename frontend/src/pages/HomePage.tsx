@@ -1,4 +1,5 @@
-import { Activity, Camera, Navigation, RadioTower } from 'lucide-react'
+import { Activity, Camera, Images, Navigation, RadioTower } from 'lucide-react'
+import { Link } from 'react-router'
 import { useMemo } from 'react'
 import type { Analysis } from '@/api/types'
 import { RiskBadge } from '@/components/analysis/RiskBadge'
@@ -79,6 +80,12 @@ export function HomePage() {
           <p className="text-sm text-muted-foreground">{th.subtitle(hhmm(now))}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Button asChild size="sm" variant="outline">
+            <Link to="/overview">
+              <Images aria-hidden />
+              {th.allFrames}
+            </Link>
+          </Button>
           <span className="flex items-center gap-2 text-xs text-muted-foreground">
             {th.overall}
             {overall ? <RiskBadge level={overall} size="lg" /> : <Skeleton className="h-7 w-16" />}

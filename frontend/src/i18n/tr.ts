@@ -2,7 +2,7 @@
 export const tr = {
   app: { name: 'AKYA', tagline: 'Üs Güvenliği Karar Destek' },
   sidebar: { menu: 'Ana menü', home: 'Ana sayfa', collapse: 'Menüyü daralt', expand: 'Menüyü genişlet' },
-  nav: { overview: 'Genel Bakış', map: 'Saha Haritası', watch: 'İzleme' },
+  nav: { watch: 'İzleme' },
   clock: {
     title: 'Ana saat',
     live: 'Canlı',
@@ -162,7 +162,7 @@ export const tr = {
     tabs: { map: 'Harita', motion: 'Hareket', reports: 'Raporlar' },
     notFound: 'Bu kare için analiz bulunamadı.',
     loadError: 'Analiz yüklenemedi.',
-    back: { overview: 'Genel Bakış', map: 'Saha Haritası' },
+    back: { overview: 'Genel Bakış', watch: 'İzleme' },
     analyze: 'Analiz et',
   },
   brief: {
@@ -184,6 +184,7 @@ export const tr = {
     level: 'Seviye',
   },
   home: {
+    allFrames: 'Tüm kareler',
     title: 'Durum Paneli',
     subtitle: (at: string) => `Harekât sahası · ${at} itibarıyla`,
     asOf: 'Durum saati',

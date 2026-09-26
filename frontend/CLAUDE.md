@@ -20,12 +20,13 @@ src/
     layout/     AppShell, Sidebar (collapsible nav, logo → home), StatusIndicator (API + LLM health)
     analysis/   AgentTimeline, StepCard, BriefCard, EvidenceChip, RiskBadge, VehicleTable
     image/      FrameViewer (image + SVG overlay for boxes), OverlayToggles
-    map/        FieldMapView (Saha Haritası): MapGrid, ZoneLayer, FrameLayer, TrackLayer, ReportLayer,
-                BaseMarker, ZonePanel, ReportFeed, TimeBar, TrackDetail, MapLegend
+    map/        Shared map pieces for the watch map: MapGrid, ZoneLayer, FrameLayer, TrackLayer,
+                ReportLayer, BaseMarker, TimeBar, TimeScrubber (the old field map page was removed)
     reports/    ReportList, ReportVerdictChip, ReportsTable
     watch/      Watch demo (İzleme): WatchMap, SectorLayer, VehicleLayer, TickBar, SupervisorCard,
                 WatcherCard, TraceView, VehiclePanel, ReportRef, ReportsTab, VehicleTypeIcon
-  pages/        HomePage (/), OverviewPage (/overview), FieldMapPage (/map), WatchPage (/watch), AnalysisPage (/analysis/:id)
+  pages/        HomePage (/, from the logo), OverviewPage (/overview, reached from the home page only),
+                WatchPage (/watch, the map; /map redirects here), AnalysisPage (/analysis/:id)
   lib/          risk.ts (level → color/label), format.ts (km, m/s, time), geo.ts (display helpers only)
   i18n/         tr.ts (all user-facing strings), en.ts
   mocks/        img_000860.analysis.json (from AGENT_DESIGN §9) for mock-first development.
@@ -42,6 +43,7 @@ src/
 - Accessibility basics: buttons are `<Button>`, icons have `aria-label`, color is never the only signal (risk badge = color + text).
 
 ## Visual language (ops center, day mode)
+- Side bars (left sidebar, the watch page's right panel) use the light sky tint `--sidebar` (`bg-sidebar`).
 - Day mode by default (user decision, 26 Sep): shadcn CSS variables in `index.css` `:root` — soft blue-gray page, off-white cards (deliberately below pure white to cut glare), map surface `bg-map` (`--map`), 1px borders, rounded-lg. The dark palette stays in `.dark` (add `class="dark"` to `<html>` to use it). Pick text/stroke shades that read on white (`-600`/`-700`); overlays on drone photos keep dark labels.
 - Fonts: Inter for UI, JetBrains Mono for coordinates, IDs, times and numbers.
 - Risk colors (single source: `lib/risk.ts`): LOW = emerald, MEDIUM = amber/mustard, HIGH = orange, CRITICAL = red (with subtle pulse). Report verdicts: CORROBORATED = emerald, CONTRADICTED = red, UNVERIFIED = zinc, IRRELEVANT = muted/hidden.

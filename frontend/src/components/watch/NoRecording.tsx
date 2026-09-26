@@ -35,7 +35,7 @@ export function NoRecording({ field, windows }: Props) {
             expected={NONE}
             selectedId={selected}
             onSelect={setSelected}
-            onOpenFrame={(id) => void navigate(`/analysis/${id}`)}
+            onOpenFrame={(id) => void navigate(`/analysis/${id}`, { state: { from: 'watch' } })}
           />
         </div>
         <aside className="flex w-[27rem] shrink-0 flex-col gap-2 rounded-lg border border-dashed bg-card p-4 text-sm text-muted-foreground">

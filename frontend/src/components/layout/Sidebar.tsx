@@ -1,4 +1,4 @@
-import { LayoutGrid, Map as MapIcon, PanelLeftClose, PanelLeftOpen, Radar, ShieldHalf } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, Radar, ShieldHalf } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router'
 import { Button } from '@/components/ui/button'
@@ -8,8 +8,6 @@ import { cn } from '@/lib/utils'
 import { SidebarClock } from './SidebarClock'
 
 const NAV = [
-  { to: '/overview', label: t.nav.overview, icon: LayoutGrid },
-  { to: '/map', label: t.nav.map, icon: MapIcon },
   { to: '/watch', label: t.nav.watch, icon: Radar },
 ] as const
 
@@ -43,7 +41,7 @@ export function Sidebar() {
   const sb = t.sidebar
 
   return (
-    <aside className={cn('flex shrink-0 flex-col border-r bg-card/60 transition-[width] duration-200', open ? 'w-56' : 'w-14')}>
+    <aside className={cn('flex shrink-0 flex-col border-r bg-sidebar transition-[width] duration-200', open ? 'w-56' : 'w-14')}>
       <Link
         to="/"
         aria-label={sb.home}
