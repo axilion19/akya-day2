@@ -4,6 +4,7 @@ import type { ImageMeta, MapReport, MapTrack, Scene } from '@/api/types'
 import { TimeBar } from '@/components/map/TimeBar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ReportsTab } from '@/components/watch/ReportsTab'
 import { SupervisorCard } from '@/components/watch/SupervisorCard'
 import { TickBar } from '@/components/watch/TickBar'
 import { VehiclePanel } from '@/components/watch/VehiclePanel'
@@ -22,7 +23,9 @@ import {
   TICK_MIN,
   finishedAgents,
   levelsAt,
-  passedReports,
+  reportJudgments,
+  reportTexts,
+  tickJudgments,
   playheadAt,
   progress,
   toMinute,
@@ -31,7 +34,7 @@ import {
 } from '@/lib/watchDemo'
 
 /** Demo mode: replays a recorded multi-agent watch run on the field-map clock (no LLM calls).
- *  Deep links: /watch?recording=<id>&tick=<1-based>&at=<HH:MM>&vehicle=<track_id>&tab=watchers. */
+ *  Deep links: /watch?recording=<id>&tick=<1-based>&at=<HH:MM>&vehicle=<track_id>&tab=watchers|reports. */
 export function WatchPage() {
   const [params] = useSearchParams()
   const [recordingId, setRecordingId] = useState<string | null>(params.get('recording'))
@@ -54,7 +57,7 @@ export function WatchPage() {
       initialTick={tickParam > 0 ? tickParam - 1 : null}
       initialMinute={at}
       initialVehicle={params.get('vehicle')}
-      initialTab={params.get('tab') === 'watchers' ? 'watchers' : 'supervisor'}
+      initialTab={params.get('tab') === 'watchers' || params.get('tab') === 'reports' ? (params.get('tab') as 'watchers' | 'reports') : 'supervisor'}
       recordings={demo.recordings?.map((r) => r.recording_id) ?? []}
       recordingId={demo.recordingId}
       onRecording={setRecordingId}
@@ -68,7 +71,7 @@ interface PlayerProps {
   initialTick: number | null
   initialMinute: number | null
   initialVehicle: string | null
-  initialTab: 'supervisor' | 'watchers'
+  initialTab: 'supervisor' | 'watchers' | 'reports'
   recordings: string[]
   recordingId: string | null
   onRecording: (id: string) => void
@@ -101,6 +104,9 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
     .flatMap((tv) => tv.alerts.map((e) => e.alert))
     .reverse()
   const alertLive = tick.alerts.length > 0 && head.elapsed >= SCHEDULE.alert.start && !alertDone
+  const judged = reportJudgments(model, head, done, complete)
+  const texts = reportTexts(model, head.index)
+  const contradicted = tickJudgments(tick).filter((j) => j.judgment.verdict === 'CONTRADICTED' || j.judgment.deception)
   const watchersLive = head.elapsed > 0 && !done.has(`watcher:${tick.watchers[tick.watchers.length - 1]?.watcher ?? ''}`)
 
   return (
@@ -158,6 +164,7 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
                   {w.tabWatchers(tick.watchers.length)}
                   {watchersLive && <span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden />}
                 </TabsTrigger>
+                <TabsTrigger value="reports">{w.tabReports(judged.length)}</TabsTrigger>
               </TabsList>
               <TabsContent value="supervisor" className="min-h-0 overflow-y-auto pr-1">
                 {head.elapsed === 0 && head.index === 0 ? (
@@ -169,7 +176,8 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
                     decision={head.elapsed >= SCHEDULE.supervisor.start ? tick.supervisor : previous?.supervisor}
                     alerts={head.elapsed >= SCHEDULE.supervisor.start ? tick.alerts.map((e) => e.alert) : []}
                     history={history}
-                    reports={head.elapsed >= SCHEDULE.supervisor.start ? passedReports(tick.watchers) : []}
+                    contradicted={head.elapsed >= SCHEDULE.supervisor.start ? contradicted : []}
+                    texts={texts}
                     progress={head.elapsed >= SCHEDULE.supervisor.start ? supProgress : previous ? 1 : 0}
                     alertProgress={progress(head.elapsed, SCHEDULE.alert)}
                   />
@@ -191,6 +199,9 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
                   ) : null,
                 )}
                 <p className="text-[11px] text-muted-foreground">{w.hint}</p>
+              </TabsContent>
+              <TabsContent value="reports" className="min-h-0 overflow-y-auto pr-1">
+                <ReportsTab judged={judged} texts={texts} />
               </TabsContent>
             </Tabs>
           </aside>

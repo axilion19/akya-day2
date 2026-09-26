@@ -57,8 +57,8 @@ export function VehiclePanel({ trackId, state, row, history, onClose }: Props) {
               </span>
               <AgentText text={h.verdict.reason} max={110} />
               {h.verdict.note && <AgentText text={`${v.note}: ${h.verdict.note}`} max={110} className="text-muted-foreground italic" />}
-              {h.reports.map((rep) => (
-                <ReportRef key={rep.report_id} report={rep} />
+              {h.reports.map((j) => (
+                <ReportRef key={j.report.report_id} report={j.report} judgment={j.judgment} />
               ))}
             </div>
           ))}
