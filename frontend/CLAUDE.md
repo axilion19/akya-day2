@@ -26,8 +26,9 @@ src/
     map/        FieldMapView (Saha Haritası): MapGrid, ZoneLayer, FrameLayer, TrackLayer, ReportLayer,
                 BaseMarker, ZonePanel, ReportFeed, TimeBar, TrackDetail, MapLegend
     reports/    ReportList, ReportVerdictChip, ReportsTable
-    admin/      AdminEditor (draft owner), AdminToolbar, RiskRulesTab, RuleSection, NumberField, TierTable,
-                PromptsTab, AgentSettingsCard, PromptEditor, PromptPreview
+    admin/      AdminEditor (draft owner), AdminToolbar, RiskRulesTab, RuleSection, NumberField,
+                PromptsTab, AgentSettingsCard, PromptEditor, PromptPreview. Shows only the thresholds that decide
+                risk marking (SECTIONS in lib/tuningFields.ts); every other tuning field keeps its backend default.
     watch/      Watch demo (İzleme): WatchMap, SectorLayer, VehicleLayer, TickBar, SupervisorCard,
                 WatcherCard, TraceView, VehiclePanel
   pages/        LoginPage (/login), HomePage (/), OverviewPage (/overview), FieldMapPage (/map), WatchPage (/watch),

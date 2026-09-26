@@ -39,7 +39,7 @@ function Select({ label, value, env, options, onChange }: {
   )
 }
 
-/** Lookup limit, reasoning effort and (watcher card only) output language; empty = env. */
+/** Lookup limit and reasoning effort; empty = env. */
 export function AgentSettingsCard({ agent, draft, view, errors, onChange, onInvalid }: Props) {
   const effortPath = `agents.${agent}_reasoning_effort`
   const envEffort = String(getAt(view.env_knobs, `${agent}_reasoning_effort`))
@@ -69,15 +69,6 @@ export function AgentSettingsCard({ agent, draft, view, errors, onChange, onInva
           options={EFFORTS.map((e) => ({ value: e, label: e }))}
           onChange={(v) => onChange(effortPath, v)}
         />
-        {agent === 'watcher' && (
-          <Select
-            label={t.admin.language}
-            value={draft.agents.brief_language}
-            env={t.admin.languages[view.env_knobs.brief_language]}
-            options={(['tr', 'en'] as const).map((l) => ({ value: l, label: t.admin.languages[l] }))}
-            onChange={(v) => onChange('agents.brief_language', v)}
-          />
-        )}
       </CardContent>
     </Card>
   )
