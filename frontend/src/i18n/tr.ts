@@ -227,6 +227,17 @@ export const tr = {
       zones: 'Geçtiği bölgeler',
       loadError: 'Hareket analizi alınamadı.',
     },
+    frame: {
+      subtitle: 'Drone görüntü karesi',
+      close: 'Kapat',
+      imageError: 'Görüntü yüklenemedi.',
+      captured: 'Çekim saati',
+      zone: 'Bölge',
+      center: 'Merkez',
+      size: 'Çözünürlük',
+      tracks: 'Karedeki iz sayısı',
+      analyze: 'Analiz et',
+    },
   },
   common: { retry: 'Tekrar dene', empty: 'Veri yok', raw: 'Ham veri' },
 } as const

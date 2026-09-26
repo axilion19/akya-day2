@@ -13,27 +13,31 @@ interface Props {
   frames: FrameMark[]
   minute: number
   mpp: number
-  onOpen: (id: string) => void
+  selectedId: string | null
+  onSelect: (id: string) => void
 }
 
 /** Minutes around a capture time during which the frame is shown as "being taken". */
 const LIVE_MIN = 5
 
-/** Drone frame footprints; the one being captured glows, past ones stay dim. Click = analysis. */
-export function FrameLayer({ frames, minute, mpp, onOpen }: Props) {
+/** Drone frame footprints; the one being captured glows, past ones stay dim, the selected one is cyan. Click = detail card. */
+export function FrameLayer({ frames, minute, mpp, selectedId, onSelect }: Props) {
   return (
     <g>
       {frames.map((f) => {
         const live = Math.abs(minute - f.captureMin) <= LIVE_MIN
         const past = !live && f.captureMin < minute
-        const s = (live ? 6 : 4) * mpp
+        const selected = f.id === selectedId
+        const s = (live || selected ? 6 : 4) * mpp
         return (
-          <g key={f.id} className="group cursor-pointer" onClick={() => onOpen(f.id)}>
+          <g key={f.id} className="group cursor-pointer" onClick={() => onSelect(f.id)}>
             <title>{`${f.id} · ${f.captureTime}`}</title>
             <polygon
               points={toPoints(f.corners)}
               className={
-                live
+                selected
+                  ? 'fill-cyan-400/25 stroke-cyan-300'
+                  : live
                   ? 'fill-sky-400/30 stroke-sky-300'
                   : past
                     ? 'fill-sky-400/10 stroke-sky-400/50'
@@ -49,7 +53,7 @@ export function FrameLayer({ frames, minute, mpp, onOpen }: Props) {
               height={2 * s}
               className={cn(
                 'stroke-sky-300 group-hover:fill-sky-300',
-                live ? 'fill-sky-300' : past ? 'fill-sky-500/40' : 'fill-transparent opacity-50',
+                selected ? 'fill-cyan-300 stroke-cyan-200' : live ? 'fill-sky-300' : past ? 'fill-sky-500/40' : 'fill-transparent opacity-50',
               )}
               vectorEffect="non-scaling-stroke"
             />
