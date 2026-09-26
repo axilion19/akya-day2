@@ -40,6 +40,7 @@ export const tr = {
     defaultValue: (v: string) => `varsayılan ${v}`,
     envValue: (v: string) => `boş = ortam ayarı (${v})`,
     invalidNumber: 'Geçerli bir sayı girin',
+    integerNumber: 'Tam sayı girin',
     saveFailed: 'Kaydedilemedi',
     saveBlocked: 'Geçersiz alanlar var',
     loadFailed: 'Ayarlar yüklenemedi',

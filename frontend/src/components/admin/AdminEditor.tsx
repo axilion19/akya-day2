@@ -11,6 +11,8 @@ import { RiskRulesTab } from './RiskRulesTab'
 
 export type FieldErrors = Record<string, { code: string; arg: string }>
 
+const KNOWN_PATH = /^(behavior|groups|rubric|ceiling|judgment|agents|prompts)\./
+
 interface Props {
   view: TuningView
   save: UseMutationResult<TuningView, Error, AgentTuning>
@@ -21,6 +23,8 @@ interface Props {
 export function AdminEditor({ view, save, reset }: Props) {
   const [draft, setDraft] = useState<AgentTuning>(view.current)
   const [invalid, setInvalid] = useState<Set<string>>(new Set())
+  // Bumped on revert so every field drops its locally typed (possibly invalid) text.
+  const [revision, setRevision] = useState(0)
   const onChange = (path: string, value: unknown) => setDraft((d) => setAt(d, path, value))
   const onInvalid = (key: string, bad: boolean) =>
     setInvalid((s) => {
@@ -34,7 +38,9 @@ export function AdminEditor({ view, save, reset }: Props) {
   const err = save.error ?? reset.error
   const errors: FieldErrors =
     err instanceof ApiError && err.status === 422 ? parseProblems(err.detail) : {}
-  const banner = err && !(err instanceof ApiError && err.status === 422) ? t.admin.saveFailed : undefined
+  // A 422 we cannot map to a field (e.g. FastAPI's own type errors) still needs a visible message.
+  const mapped = Object.keys(errors).some((p) => KNOWN_PATH.test(p))
+  const banner = err && !mapped ? t.admin.saveFailed : undefined
   const tabProps = { draft, view, errors, onChange, onInvalid }
 
   return (
@@ -46,7 +52,11 @@ export function AdminEditor({ view, save, reset }: Props) {
         saving={save.isPending || reset.isPending}
         error={banner}
         onSave={() => save.mutate(draft)}
-        onRevert={() => { setInvalid(new Set()); setDraft(view.current) }}
+        onRevert={() => {
+          setInvalid(new Set())
+          setDraft(view.current)
+          setRevision((r) => r + 1)
+        }}
         onResetAll={() => reset.mutate()}
       />
       {view.load_warning && (
@@ -54,15 +64,15 @@ export function AdminEditor({ view, save, reset }: Props) {
           {t.admin.loadWarning(view.load_warning)}
         </p>
       )}
-      <Tabs defaultValue="rules">
+      <Tabs key={revision} defaultValue="rules">
         <TabsList>
           <TabsTrigger value="rules">{t.admin.tabs.rules}</TabsTrigger>
           <TabsTrigger value="prompts">{t.admin.tabs.prompts}</TabsTrigger>
         </TabsList>
-        <TabsContent value="rules">
+        <TabsContent value="rules" forceMount className="data-[state=inactive]:hidden">
           <RiskRulesTab {...tabProps} />
         </TabsContent>
-        <TabsContent value="prompts">
+        <TabsContent value="prompts" forceMount className="data-[state=inactive]:hidden">
           <PromptsTab {...tabProps} />
         </TabsContent>
       </Tabs>

@@ -8,6 +8,7 @@ export interface FieldDef {
   path: string
   unit: Unit
   nullable?: boolean
+  integer?: boolean
 }
 export interface TierDef {
   path: 'rubric.distance_tiers' | 'rubric.approach_rate_tiers'
@@ -19,7 +20,13 @@ export interface SectionDef {
   tiers: TierDef[]
 }
 
-const f = (path: string, unit: Unit, nullable = false): FieldDef => ({ path, unit, nullable })
+// Points and counts are integers in the backend model; everything else is a float.
+const f = (path: string, unit: Unit, nullable = false): FieldDef => ({
+  path,
+  unit,
+  nullable,
+  integer: unit === 'pts' || unit === 'count',
+})
 
 export const SECTIONS: SectionDef[] = [
   {

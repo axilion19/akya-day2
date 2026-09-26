@@ -43,6 +43,7 @@ export const en: Messages = {
     defaultValue: (v: string) => `default ${v}`,
     envValue: (v: string) => `empty = environment setting (${v})`,
     invalidNumber: 'Enter a valid number',
+    integerNumber: 'Enter a whole number',
     saveFailed: 'Could not save',
     saveBlocked: 'Some fields are invalid',
     loadFailed: 'Could not load settings',

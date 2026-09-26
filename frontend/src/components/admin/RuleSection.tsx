@@ -45,6 +45,7 @@ export function RuleSection({ section, draft, view, errors, onChange, onInvalid 
                 label={t.admin.fields[field.path] ?? field.path}
                 unit={field.unit}
                 nullable={field.nullable}
+                integer={field.integer}
                 value={getAt(draft, field.path) as number | null}
                 defaultValue={getAt(view.defaults, field.path) as number | null}
                 envValue={knob ? (getAt(view.env_knobs, knob) as number) : undefined}

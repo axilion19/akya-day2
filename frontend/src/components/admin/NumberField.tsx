@@ -7,6 +7,15 @@ import { errorText, type Problem } from '@/lib/tuningErrors'
 import type { Unit } from '@/lib/tuningFields'
 import { cn } from '@/lib/utils'
 
+/** Why the typed text cannot be saved, or undefined when it can. */
+function inputError(text: string, nullable?: boolean, integer?: boolean): string | undefined {
+  if (text.trim() === '') return nullable ? undefined : t.admin.invalidNumber
+  const n = Number(text)
+  if (!Number.isFinite(n)) return t.admin.invalidNumber
+  if (integer && !Number.isInteger(n)) return t.admin.integerNumber
+  return undefined
+}
+
 interface Props {
   label: string
   unit: Unit
@@ -14,13 +23,25 @@ interface Props {
   defaultValue: number | null
   envValue?: number
   nullable?: boolean
+  integer?: boolean
   error?: Problem
   onChange: (value: number | null) => void
   onInvalid: (invalid: boolean) => void
 }
 
 /** One number with unit, default hint, changed dot and reset; keeps invalid text locally. */
-export function NumberField({ label, unit, value, defaultValue, envValue, nullable, error, onChange, onInvalid }: Props) {
+export function NumberField({
+  label,
+  unit,
+  value,
+  defaultValue,
+  envValue,
+  nullable,
+  integer,
+  error,
+  onChange,
+  onInvalid,
+}: Props) {
   const [text, setText] = useState(value === null ? '' : String(value))
   const [shown, setShown] = useState(value)
   if (value !== shown) {
@@ -29,8 +50,8 @@ export function NumberField({ label, unit, value, defaultValue, envValue, nullab
     setText(value === null ? '' : String(value))
   }
   const changed = value !== defaultValue
-  const localInvalid = text.trim() === '' ? !nullable : Number.isNaN(Number(text))
-  const message = localInvalid ? t.admin.invalidNumber : errorText(error)
+  const localError = inputError(text, nullable, integer)
+  const message = localError ?? errorText(error)
   const hint =
     nullable && envValue !== undefined
       ? t.admin.envValue(String(envValue))
@@ -38,11 +59,9 @@ export function NumberField({ label, unit, value, defaultValue, envValue, nullab
 
   const handle = (next: string) => {
     setText(next)
-    const empty = next.trim() === ''
-    const n = Number(next)
-    const bad = empty ? !nullable : Number.isNaN(n)
+    const bad = inputError(next, nullable, integer) !== undefined
     onInvalid(bad)
-    if (!bad) onChange(empty ? null : n)
+    if (!bad) onChange(next.trim() === '' ? null : Number(next))
   }
 
   return (

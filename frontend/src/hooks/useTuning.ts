@@ -9,7 +9,11 @@ const KEY = ['admin', 'tuning'] as const
 export function useTuning() {
   const qc = useQueryClient()
   const query = useQuery({ queryKey: KEY, queryFn: getTuning, retry: false })
-  const onSuccess = (view: TuningView) => qc.setQueryData(KEY, view)
+  const onSuccess = (view: TuningView) => {
+    qc.setQueryData(KEY, view)
+    // Analyses are cached forever client-side; a new tuning must re-run them.
+    void qc.invalidateQueries({ queryKey: ['analysis'] })
+  }
   const save = useMutation({ mutationFn: putTuning, onSuccess })
   const reset = useMutation({ mutationFn: deleteTuning, onSuccess })
   return { query, save, reset }

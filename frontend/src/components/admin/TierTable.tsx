@@ -34,6 +34,7 @@ export function TierTable({ def, tiers, defaults, error, onChange, onInvalid }: 
           <NumberField
             label={t.admin.units.pts}
             unit="pts"
+            integer
             value={tier.points}
             defaultValue={defaults[i]?.points ?? null}
             onChange={(v) => update(i, { points: Math.round(v ?? 0) })}

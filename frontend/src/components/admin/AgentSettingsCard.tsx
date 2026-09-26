@@ -53,6 +53,7 @@ export function AgentSettingsCard({ agent, draft, view, errors, onChange, onInva
             label={t.admin.fields[field.path] ?? field.path}
             unit={field.unit}
             nullable
+            integer
             value={getAt(draft, field.path) as number | null}
             defaultValue={null}
             envValue={getAt(view.env_knobs, field.path.slice('agents.'.length)) as number}

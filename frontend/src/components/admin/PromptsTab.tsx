@@ -27,7 +27,10 @@ export function PromptsTab(props: Props) {
       {AGENTS.map((agent) => {
         const text = draft.prompts[agent]
         return (
-          <TabsContent key={agent} value={agent} className="grid gap-4 xl:grid-cols-[20rem_1fr_1fr]">
+          <TabsContent key={agent} value={agent}
+            forceMount
+            className="grid gap-4 data-[state=inactive]:hidden xl:grid-cols-[20rem_1fr_1fr]"
+          >
             <AgentSettingsCard agent={agent} {...props} />
             <PromptEditor
               text={text}
