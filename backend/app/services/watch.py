@@ -28,6 +28,7 @@ from app.domain.watch import (
 from app.services.geo import angle_diff_deg, bearing_deg, haversine_m, pixel_to_latlon
 from app.services.motion import motion_profile
 from app.services.risk import TYPE_POINTS, distance_factor, level_for, motion_factors
+from app.services.risk import is_imminent as risk_is_imminent
 from app.services.tracks import match_detections, tracks_at
 
 WATCH_LEVEL_OF: dict[RiskLevel, WatchLevel] = {
@@ -121,27 +122,12 @@ def track_rubric(motion: MotionProfile, vehicle_type: str | None = None) -> Rubr
     return Rubric(score=score, level=level_for(score), factors=factors)
 
 
-# HIGH means an imminent threat, not "approaching": roads lead to the base and about half the
-# vehicles in the data drive toward it at some point. These gates decide what may be HIGH.
-IMMINENT_DIST_M = 2000  # closing on the base and this close ...
-IMMINENT_ETA_MIN = 8.0  # ... or arriving this soon
-IMMINENT_HEADING_DEG = 45  # driving roughly at the base
-AT_BASE_M = 1000  # this close to the base is HIGH-eligible whatever it does
-
-
 def is_imminent(row: VehicleRow) -> bool:
-    """Whether a vehicle may be HIGH: at the base, or closing on it now, pointed at it, and
-    within IMMINENT_DIST_M or IMMINENT_ETA_MIN."""
-    if row.dist_to_base_m <= AT_BASE_M:
-        return True
-    closing = (
-        row.moving
-        and row.closing_last5_m_per_min > 0
-        and row.heading_vs_base_deg is not None
-        and row.heading_vs_base_deg <= IMMINENT_HEADING_DEG
+    """Whether a vehicle may be HIGH (`services.risk.is_imminent` on the row's facts)."""
+    closing_now = row.moving and row.closing_last5_m_per_min > 0
+    return risk_is_imminent(
+        row.dist_to_base_m, closing_now, row.heading_vs_base_deg, row.eta_to_base_min
     )
-    soon = row.eta_to_base_min is not None and row.eta_to_base_min <= IMMINENT_ETA_MIN
-    return closing and (row.dist_to_base_m <= IMMINENT_DIST_M or soon)
 
 
 def gated_level(level: WatchLevel, row: VehicleRow) -> WatchLevel:
