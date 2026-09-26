@@ -18,6 +18,23 @@ export interface TickView {
 export interface VehicleState {
   level: WatchLevel
   pending: boolean
+  /** Simulated minute the vehicle became HIGH (its agent finished writing); set while HIGH. */
+  highSince?: number
+}
+
+/** Simulated minute at which `by` ("watcher:W1" / "supervisor") finished writing in a tick. */
+function finishMinute(tv: TickView, by: string): number {
+  const i = tv.watchers.findIndex((w) => `watcher:${w.watcher}` === by)
+  const span = i >= 0 ? SCHEDULE.watcher(i) : SCHEDULE.supervisor
+  return tv.minute - TICK_MIN + span.start + span.dur
+}
+
+/** Applies one level change; keeps `highSince` while the vehicle stays HIGH. */
+function applyChange(levels: Map<string, VehicleState>, tv: TickView, c: WatchEventOf<'level_changed'>) {
+  const prev = levels.get(c.track_id)
+  const highSince =
+    c.to_level !== 'HIGH' ? undefined : prev?.level === 'HIGH' ? prev.highSince : finishMinute(tv, c.by)
+  levels.set(c.track_id, { level: c.to_level, pending: c.pending, highSince })
 }
 
 export interface DemoModel {
@@ -67,7 +84,7 @@ export function buildDemoModel(events: WatchEvent[]): DemoModel {
   let levels = new Map<string, VehicleState>()
   for (const tv of ticks) {
     levels = new Map(levels)
-    for (const c of tv.changes) levels.set(c.track_id, { level: c.to_level, pending: c.pending })
+    for (const c of tv.changes) applyChange(levels, tv, c)
     levelsAfter.push(levels)
   }
 
@@ -142,8 +159,9 @@ export function finishedAgents(model: DemoModel, head: Playhead): Set<string> {
 export function levelsAt(model: DemoModel, head: Playhead): Map<string, VehicleState> {
   const levels = new Map(head.index > 0 ? model.levelsAfter[head.index - 1] : undefined)
   const done = finishedAgents(model, head)
-  for (const c of model.ticks[head.index]?.changes ?? []) {
-    if (done.has(c.by)) levels.set(c.track_id, { level: c.to_level, pending: c.pending })
+  const tick = model.ticks[head.index]
+  for (const c of tick?.changes ?? []) {
+    if (tick && done.has(c.by)) applyChange(levels, tick, c)
   }
   return levels
 }

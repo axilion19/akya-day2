@@ -16,21 +16,25 @@ interface Props {
 }
 
 const ORDER: Record<WatchLevel, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 }
-const FOCUS_TRAIL_MIN = 45
+const FOCUS_TRAIL_MIN = 45 // vehicles in the operator alert
+const HIGH_TRAIL_MIN = 120 // HIGH vehicles: the whole route so far (tracks cover 2 h)
 const REVEAL_MIN = 1.5 // simulated minutes for a focus trail to draw itself in
 const DOT: Record<WatchLevel, number> = { LOW: 2.5, MEDIUM: 4, HIGH: 5 }
 
-/** Every vehicle as a dot colored by its agent level. Only vehicles in the operator alert show
- *  their recent route, and only the selected one shows its id and full route: keeps the map calm. */
+/** Every vehicle as a dot colored by its agent level. HIGH vehicles show their whole route so far,
+ *  vehicles in the operator alert their last 45 min; the selected one also shows its id. */
 export function VehicleLayer({ tracks, minute, mpp, levels, focus, selectedId, onSelect }: Props) {
   const drawn = tracks
     .map((tr) => {
       const full = pathAt(tr.samples, minute)
+      const state = levels.get(tr.id)
       const since = focus.get(tr.id)
-      const k = since === undefined ? 0 : Math.max(0, Math.min(1, (minute - since) / REVEAL_MIN))
-      const path =
-        tr.id === selectedId ? full : k > 0 ? trailAt(tr.samples, minute, FOCUS_TRAIL_MIN * k) : []
-      return { id: tr.id, path, head: full[full.length - 1], state: levels.get(tr.id), focused: since !== undefined }
+      // A trail draws itself in from the moment the vehicle entered the alert or became HIGH.
+      const grow = (from: number | undefined) =>
+        from === undefined ? 0 : Math.max(0, Math.min(1, (minute - from) / REVEAL_MIN))
+      const trailMin = Math.max(FOCUS_TRAIL_MIN * grow(since), HIGH_TRAIL_MIN * grow(state?.highSince))
+      const path = tr.id === selectedId ? full : trailMin > 0 ? trailAt(tr.samples, minute, trailMin) : []
+      return { id: tr.id, path, head: full[full.length - 1], state, focused: since !== undefined }
     })
     .filter((v) => v.head !== undefined)
     .sort(
