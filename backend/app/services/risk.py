@@ -4,6 +4,7 @@ from app.domain.detection import Detection, TrackMatch
 from app.domain.report import ReportAssessment, ReportClaim
 from app.domain.risk import RISK_LEVELS, RiskFactor, RiskLevel, VehicleRisk
 from app.domain.track import MotionProfile
+from app.domain.tuning import CeilingTuning, PatternPoints, RubricTuning, Tier, TypePoints
 from app.domain.watch import BehaviorClass, WatchLevel
 from app.services.behavior import DANGER_PATTERNS, LARGE_GROUP
 from app.services.geo import angle_diff_deg
@@ -26,6 +27,42 @@ APPROACH_HEADING_DEG = 45  # "driving at the base"
 APPROACH_HIGH_M, APPROACH_HIGH_ETA_MIN = 1500, 5.0  # very high approach: HIGH allowed
 APPROACH_MEDIUM_MS = 4.0  # fast approach ...
 APPROACH_MEDIUM_M, APPROACH_MEDIUM_ETA_MIN = 3000, 12.0  # ... this close or soon: MEDIUM allowed
+GROUP_POINTS = 15
+DISTANCE_TIERS = ((1000, 30), (2000, 20), (4000, 10))  # dist < m -> points
+APPROACH_RATE_TIERS = ((80, 15), (50, 8))  # rate > m/min -> points
+HEADING_POINTS = 5
+STOP_POINTS_FIRST, STOP_POINTS_EXTRA = 5, 5
+LEVEL_STEP = 25
+
+DEFAULT_RUBRIC = RubricTuning(
+    distance_tiers=[Tier(limit=m, points=p) for m, p in DISTANCE_TIERS],
+    approach_rate_tiers=[Tier(limit=r, points=p) for r, p in APPROACH_RATE_TIERS],
+    heading_points=HEADING_POINTS,
+    heading_tolerance_deg=HEADING_TOLERANCE_DEG,
+    long_stop_min=LONG_STOP_MIN,
+    stop_near_base_m=STOP_NEAR_BASE_M,
+    stop_points_first=STOP_POINTS_FIRST,
+    stop_points_extra=STOP_POINTS_EXTRA,
+    pattern_points=PatternPoints(
+        loops_around_base=PATTERN_POINTS["loops_around_base"],
+        fixed_range_orbit=PATTERN_POINTS["fixed_range_orbit"],
+    ),
+    group_points=GROUP_POINTS,
+    type_points=TypePoints(
+        truck=TYPE_POINTS["truck"], bus=TYPE_POINTS["bus"], van=TYPE_POINTS["van"]
+    ),
+    level_step=LEVEL_STEP,
+)
+DEFAULT_CEILING = CeilingTuning(
+    at_base_m=AT_BASE_M,
+    pattern_high_m=PATTERN_HIGH_M,
+    approach_heading_deg=APPROACH_HEADING_DEG,
+    approach_high_m=APPROACH_HIGH_M,
+    approach_high_eta_min=APPROACH_HIGH_ETA_MIN,
+    approach_medium_ms=APPROACH_MEDIUM_MS,
+    approach_medium_m=APPROACH_MEDIUM_M,
+    approach_medium_eta_min=APPROACH_MEDIUM_ETA_MIN,
+)
 
 
 def level_ceiling(
@@ -89,9 +126,6 @@ def cap_level(level: RiskLevel, ceiling: WatchLevel) -> RiskLevel:
     if ceiling == "HIGH":
         return level
     return min(level, ceiling, key=RISK_LEVELS.index)
-
-
-GROUP_POINTS = 15
 
 
 def group_factor(group_size: int) -> RiskFactor:

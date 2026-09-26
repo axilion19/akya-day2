@@ -8,6 +8,7 @@ from itertools import combinations, pairwise
 
 from app.domain.geo import LatLon
 from app.domain.track import Track, TrackPoint
+from app.domain.tuning import BehaviorTuning, GroupTuning
 from app.domain.watch import BehaviorClass
 from app.services.geo import bearing_deg, haversine_m
 
@@ -22,6 +23,15 @@ LOOP_SWEEP_DEG = 270.0
 ORBIT_MIN_PATH_M = 12000.0
 ORBIT_MAX_RANGE_M = 600.0
 APPROACH_GAIN_M = 1500.0
+DEFAULT_BEHAVIOR = BehaviorTuning(
+    parked_max_path_m=PARKED_MAX_PATH_M,
+    leaving_start_m=LEAVING_START_M,
+    leaving_gain_m=LEAVING_GAIN_M,
+    loop_sweep_deg=LOOP_SWEEP_DEG,
+    orbit_min_path_m=ORBIT_MIN_PATH_M,
+    orbit_max_range_m=ORBIT_MAX_RANGE_M,
+    approach_gain_m=APPROACH_GAIN_M,
+)
 
 
 def behavior_class(points: list[TrackPoint], base: LatLon) -> BehaviorClass:
@@ -55,6 +65,9 @@ LARGE_GROUP = 4
 GROUP_RADIUS_M = 500.0
 GROUP_SAMPLES = 3  # 15 minutes at 5-minute steps
 GROUP_MIN_MOVE_M = 150.0  # over those samples; parked cars are not a group
+DEFAULT_GROUPS = GroupTuning(
+    large_group=LARGE_GROUP, group_radius_m=GROUP_RADIUS_M, group_min_move_m=GROUP_MIN_MOVE_M
+)
 
 
 def moving_groups(tracks: list[Track], minute: int) -> dict[str, list[str]]:
