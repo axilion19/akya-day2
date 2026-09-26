@@ -15,7 +15,7 @@ export function RecentReports({ reports }: Props) {
   return (
     <section className="flex flex-col rounded-lg border bg-card">
       <header className="flex items-center justify-between border-b px-4 py-2.5">
-        <h2 className="text-xs font-semibold tracking-widest text-emerald-400">{tr.title.toLocaleUpperCase('tr-TR')}</h2>
+        <h2 className="text-xs font-semibold tracking-widest text-emerald-700">{tr.title.toLocaleUpperCase('tr-TR')}</h2>
         <Link to="/map" className="flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground">
           {tr.all}
           <ArrowRight aria-hidden className="size-3" />
@@ -32,7 +32,7 @@ export function RecentReports({ reports }: Props) {
                 <SourceBadge source={r.source} />
                 {r.zone && <span className="ml-auto truncate text-[10px] text-muted-foreground">{placeName(r.zone)}</span>}
               </div>
-              <p className="line-clamp-2 font-mono text-[11px] leading-snug text-slate-300">{r.text}</p>
+              <p className="line-clamp-2 font-mono text-[11px] leading-snug text-slate-700">{r.text}</p>
             </li>
           ))}
         </ol>

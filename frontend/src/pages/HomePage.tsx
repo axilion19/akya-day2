@@ -111,19 +111,19 @@ export function HomePage() {
       </header>
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <KpiTile icon={Activity} accent="text-emerald-400" label={th.kpi.tracks} value={sit.activeTracks} detail={th.kpi.tracksTrend(delta)} note={th.kpi.tracksTotal(sit.tracksSoFar)} />
+        <KpiTile icon={Activity} accent="text-emerald-700" label={th.kpi.tracks} value={sit.activeTracks} detail={th.kpi.tracksTrend(delta)} note={th.kpi.tracksTotal(sit.tracksSoFar)} />
         <KpiTile
           icon={Navigation}
-          accent="text-orange-300"
+          accent="text-orange-700"
           label={th.kpi.closing}
           value={analysesPending && loaded.length === 0 ? '…' : closing.length}
           detail={th.kpi.closingEta(etas.length ? Math.min(...etas) : null)}
           note={th.kpi.closingNote}
         />
-        <KpiTile icon={RadioTower} accent="text-sky-400" label={th.kpi.reports} value={sit.reportsRecent.length} detail={th.kpi.reportsSplit(official, sit.reportsRecent.length - official)} note={th.kpi.reportsTotal(sit.reportsSoFar)} />
+        <KpiTile icon={RadioTower} accent="text-sky-700" label={th.kpi.reports} value={sit.reportsRecent.length} detail={th.kpi.reportsSplit(official, sit.reportsRecent.length - official)} note={th.kpi.reportsTotal(sit.reportsSoFar)} />
         <KpiTile
           icon={Camera}
-          accent="text-sky-300"
+          accent="text-sky-700"
           label={th.kpi.frames}
           value={sit.framesSoFar}
           unit={`/ ${sit.framesTotal}`}
@@ -134,7 +134,7 @@ export function HomePage() {
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between gap-2">
-            <h2 className="text-xs font-semibold tracking-widest text-emerald-400">{th.zones.title.toLocaleUpperCase('tr-TR')}</h2>
+            <h2 className="text-xs font-semibold tracking-widest text-emerald-700">{th.zones.title.toLocaleUpperCase('tr-TR')}</h2>
             <span className="text-[11px] text-muted-foreground">{th.zones.hint}</span>
           </div>
           <div className="grid gap-3 md:grid-cols-2">

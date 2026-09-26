@@ -55,10 +55,10 @@ export function ZoneStatusCard({ state, now, analysis, isPending }: Props) {
       </div>
       <footer className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t px-3 py-1.5 text-[11px] whitespace-nowrap text-muted-foreground">
         <span>
-          <span className="font-mono text-emerald-300">{state.activeTracks}</span> {tz.active}
+          <span className="font-mono text-emerald-700">{state.activeTracks}</span> {tz.active}
         </span>
         <span>
-          <span className="font-mono text-sky-300">{state.recentReports}</span> {tz.reports}
+          <span className="font-mono text-sky-700">{state.recentReports}</span> {tz.reports}
         </span>
         {brief && <span className="rounded bg-accent px-1.5 py-0.5 text-foreground">{t.action[brief.recommended_action]}</span>}
         <Link

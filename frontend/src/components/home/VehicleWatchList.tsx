@@ -16,7 +16,7 @@ export function VehicleWatchList({ vehicles, isPending }: Props) {
   return (
     <section className="flex flex-col rounded-lg border bg-card">
       <header className="border-b px-4 py-2.5">
-        <h2 className="text-xs font-semibold tracking-widest text-emerald-400">{tw.title.toLocaleUpperCase('tr-TR')}</h2>
+        <h2 className="text-xs font-semibold tracking-widest text-emerald-700">{tw.title.toLocaleUpperCase('tr-TR')}</h2>
         <p className="text-[11px] text-muted-foreground">{tw.hint}</p>
       </header>
       {isPending && vehicles.length === 0 ? (
@@ -36,7 +36,7 @@ export function VehicleWatchList({ vehicles, isPending }: Props) {
                 <span className="font-mono text-xs text-foreground">{v.trackId ?? '—'}</span>
                 <span className="font-mono text-[11px] text-muted-foreground">{tw.score(v.score)}</span>
                 {v.closing && (
-                  <span className="ml-auto flex items-center gap-1 text-[11px] text-orange-300">
+                  <span className="ml-auto flex items-center gap-1 text-[11px] text-orange-700">
                     <TrendingDown aria-hidden className="size-3.5" />
                     {tw.closing}
                   </span>

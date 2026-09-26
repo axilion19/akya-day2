@@ -53,7 +53,7 @@ export function ActivityChart({ series, reportMarks, start, end, now }: Props) {
   return (
     <section className="flex flex-col gap-2 rounded-lg border bg-card p-4">
       <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xs font-semibold tracking-widest text-emerald-400">{ta.title.toLocaleUpperCase('tr-TR')}</h2>
+        <h2 className="text-xs font-semibold tracking-widest text-emerald-700">{ta.title.toLocaleUpperCase('tr-TR')}</h2>
         <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
           {Object.entries(SOURCE_FILL).map(([k, c]) => (
             <span key={k} className="flex items-center gap-1.5">
@@ -73,15 +73,15 @@ export function ActivityChart({ series, reportMarks, start, end, now }: Props) {
             </g>
           ))}
           <path d={area} className="fill-emerald-500/20" />
-          {past.length > 1 && <path d={`M${line}`} fill="none" className="stroke-emerald-400" strokeWidth={2} strokeLinejoin="round" />}
+          {past.length > 1 && <path d={`M${line}`} fill="none" className="stroke-emerald-600" strokeWidth={2} strokeLinejoin="round" />}
           {reportMarks.map((r, i) => (
             <circle key={i} cx={x(r.minute)} cy={M.top + plotH + LANE / 2 + 2} r={4} fill={SOURCE_FILL[r.source] ?? '#71717a'} className="stroke-card" strokeWidth={1.5} />
           ))}
           {hours.map((h) => (
             <text key={h} x={x(h)} y={H - 4} textAnchor="middle" className="fill-muted-foreground font-mono text-[9px]">{hhmm(h)}</text>
           ))}
-          <line x1={x(now)} x2={x(now)} y1={M.top - 4} y2={M.top + plotH + LANE} className="stroke-cyan-300" strokeDasharray="3 3" />
-          <text x={x(now) + 4} y={M.top + 4} className="fill-cyan-300 text-[10px]">{ta.now}</text>
+          <line x1={x(now)} x2={x(now)} y1={M.top - 4} y2={M.top + plotH + LANE} className="stroke-cyan-600" strokeDasharray="3 3" />
+          <text x={x(now) + 4} y={M.top + 4} className="fill-cyan-700 text-[10px]">{ta.now}</text>
           {hover && (
             <g>
               <line x1={x(hover.minute)} x2={x(hover.minute)} y1={M.top} y2={M.top + plotH} className="stroke-foreground/40" />
