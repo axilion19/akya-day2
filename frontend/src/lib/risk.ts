@@ -2,19 +2,19 @@
 import type { RiskLevel, Verdict } from '@/api/types'
 
 export const RISK_STYLES: Record<RiskLevel, { badge: string; stroke: string }> = {
-  LOW: { badge: 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/40', stroke: '#34d399' },
-  MEDIUM: { badge: 'bg-amber-500/15 text-amber-300 ring-amber-500/40', stroke: '#fbbf24' },
-  HIGH: { badge: 'bg-orange-500/15 text-orange-300 ring-orange-500/40', stroke: '#fb923c' },
+  LOW: { badge: 'bg-emerald-500/15 text-emerald-700 ring-emerald-500/40', stroke: '#059669' },
+  MEDIUM: { badge: 'bg-amber-500/15 text-amber-700 ring-amber-500/40', stroke: '#ca8a04' },
+  HIGH: { badge: 'bg-orange-500/15 text-orange-700 ring-orange-500/40', stroke: '#e8590c' },
   CRITICAL: {
-    badge: 'bg-red-500/15 text-red-300 ring-red-500/50 animate-risk-pulse',
-    stroke: '#f87171',
+    badge: 'bg-red-500/15 text-red-700 ring-red-500/50 animate-risk-pulse',
+    stroke: '#dc2626',
   },
 }
 
 export const VERDICT_STYLES: Record<Verdict, string> = {
-  CORROBORATED: 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/40',
-  CONTRADICTED: 'bg-red-500/15 text-red-300 ring-red-500/40',
-  UNVERIFIED: 'bg-zinc-500/15 text-zinc-300 ring-zinc-500/40',
+  CORROBORATED: 'bg-emerald-500/15 text-emerald-700 ring-emerald-500/40',
+  CONTRADICTED: 'bg-red-500/15 text-red-700 ring-red-500/40',
+  UNVERIFIED: 'bg-zinc-500/15 text-zinc-700 ring-zinc-500/40',
   IRRELEVANT: 'bg-muted text-muted-foreground ring-border',
 }
 

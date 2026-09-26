@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 
 function CheckItem({ check }: { check: ReportCheck }) {
   const Icon = check.status === 'match' ? Check : check.status === 'mismatch' ? X : CircleHelp
-  const tone = check.status === 'match' ? 'text-emerald-400' : check.status === 'mismatch' ? 'text-red-400' : 'text-zinc-400'
+  const tone = check.status === 'match' ? 'text-emerald-700' : check.status === 'mismatch' ? 'text-red-700' : 'text-zinc-700'
   return (
     <span className={cn('inline-flex items-center gap-1', tone)} title={check.detail}>
       {t.checks[check.name]}
@@ -34,7 +34,7 @@ export function ReportsScene({ analysis }: { analysis: Analysis }) {
               </span>
             </div>
             {/* Untrusted text: rendered as plain text only, never interpreted. */}
-            <p className="font-mono text-sm text-zinc-100">“{claim?.text}”</p>
+            <p className="font-mono text-sm text-zinc-700">“{claim?.text}”</p>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t pt-2 font-mono text-xs">
               {a.checks.map((c) => (
                 <CheckItem key={c.name} check={c} />

@@ -37,7 +37,7 @@ def test_detector_failure_falls_back_with_warning(
     assert detect.status == "warning"
     assert "CUDA out of memory" in detect.warnings[0]
     assert detect.data["detector"] == "precomputed"
-    assert analysis.brief is not None and analysis.brief.level == "CRITICAL"
+    assert analysis.brief is not None and analysis.brief.level == "HIGH"
 
 
 def test_detector_failure_without_fallback_raises(

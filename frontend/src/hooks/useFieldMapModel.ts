@@ -2,11 +2,15 @@ import { useMemo } from 'react'
 import type { ImageMeta, MapReport, MapTrack, Scene } from '@/api/types'
 import type { FrameMark } from '@/components/map/FrameLayer'
 import type { ReportMark } from '@/components/map/ReportLayer'
-import type { TimeTick } from '@/components/map/TimeBar'
+import type { ActivityBin, TimeTick } from '@/components/map/TimeScrubber'
 import type { TrackMark } from '@/components/map/TrackLayer'
 import type { ZoneMark } from '@/components/map/ZoneLayer'
 import { project, toSamples } from '@/lib/fieldMap'
 import { toLocalM } from '@/lib/geo'
+
+const ACTIVITY_BIN_MIN = 5
+/** Minutes the field map clock starts before the first track. */
+const LEAD_IN_MIN = 5
 
 export interface ZonedTrack extends TrackMark {
   zone: string | null
@@ -60,12 +64,19 @@ export function useFieldMapModel(scene: Scene, images: ImageMeta[], tracks: MapT
     ]
 
     const times = [...zonedTracks.flatMap((tr) => [tr.startMin, tr.endMin]), ...reports.map((r) => r.time_min)]
-    const start = Math.floor(Math.min(...times) / 10) * 10
+    // The clock opens a few minutes before the first track, so the map starts empty and fills up.
+    const start = Math.min(Math.min(...zonedTracks.map((tr) => tr.startMin)) - LEAD_IN_MIN, ...reports.map((r) => r.time_min))
     const end = Math.ceil(Math.max(...times) / 10) * 10
+
+    // Active-track count per bin, for the time bar's activity lane.
+    const activity: ActivityBin[] = []
+    for (let m = start; m <= end; m += ACTIVITY_BIN_MIN) {
+      activity.push({ minute: m, count: zonedTracks.filter((tr) => tr.startMin <= m && m <= tr.endMin).length })
+    }
 
     // Everything we draw should fit: zones plus a margin for the tracks around them.
     const zoneR = Math.max(1000, ...scene.zones.map((z) => Math.hypot(toLocalM(origin, z.center).x, toLocalM(origin, z.center).y)))
 
-    return { origin, imageById, zones, tracks: zonedTracks, frames, reports: located, ticks, start, end, fitRadiusM: zoneR + 1800 }
+    return { origin, imageById, zones, tracks: zonedTracks, frames, reports: located, ticks, activity, start, end, fitRadiusM: zoneR + 1800 }
   }, [scene, images, tracks, reports])
 }

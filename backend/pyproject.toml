@@ -6,6 +6,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.141.1",
     "numpy>=2.4.6",
+    "openai>=3.19.2",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
     "scipy>=1.17.1",
@@ -36,8 +37,9 @@ package = false
 
 # CUDA wheels (sm_75+, e.g. GTX 1650). PyPI's Windows torch is CPU-only.
 [tool.uv.sources]
-torch = [{ index = "pytorch-cu128" }]
-torchvision = [{ index = "pytorch-cu128" }]
+# macOS has no CUDA wheels: it takes PyPI torch (CPU/MPS) instead.
+torch = [{ index = "pytorch-cu128", marker = "sys_platform != 'darwin'" }]
+torchvision = [{ index = "pytorch-cu128", marker = "sys_platform != 'darwin'" }]
 
 [[tool.uv.index]]
 name = "pytorch-cu128"

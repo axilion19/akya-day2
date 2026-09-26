@@ -26,8 +26,8 @@ export function ReportLayer({ reports, minute, mpp, selectedId, onSelect }: Prop
         const age = minute - r.timeMin
         const selected = r.id === selectedId
         if (age < 0 || (age > REPORT_WINDOW_MIN && !selected)) return null
-        const fill = r.official ? 'fill-sky-400 stroke-sky-950' : 'fill-amber-400 stroke-amber-950'
-        const ripple = r.official ? 'stroke-sky-300' : 'stroke-amber-300'
+        const fill = r.official ? 'fill-sky-400 stroke-white' : 'fill-amber-400 stroke-white'
+        const ripple = r.official ? 'stroke-sky-600' : 'stroke-amber-600'
         const opacity = selected ? 1 : 1 - (Math.min(age, REPORT_WINDOW_MIN) / REPORT_WINDOW_MIN) * 0.75
         return (
           <g key={r.id} className="cursor-pointer" opacity={opacity} onClick={() => onSelect(r.id)}>
@@ -47,7 +47,7 @@ export function ReportLayer({ reports, minute, mpp, selectedId, onSelect }: Prop
                 r={11 * mpp}
                 fill="none"
                 strokeWidth={2}
-                className="stroke-cyan-300"
+                className="stroke-cyan-600"
                 vectorEffect="non-scaling-stroke"
               />
             )}
@@ -56,7 +56,7 @@ export function ReportLayer({ reports, minute, mpp, selectedId, onSelect }: Prop
                 x={r.p.x + 14 * mpp}
                 y={r.p.y + 4 * mpp}
                 fontSize={11 * mpp}
-                className="pointer-events-none fill-cyan-200 font-mono"
+                className="pointer-events-none fill-cyan-700 font-mono"
               >
                 {`${r.time} · ${r.id}`}
               </text>

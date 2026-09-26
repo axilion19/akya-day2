@@ -71,6 +71,8 @@ def test_report_corroborated(analysis: Analysis) -> None:
 
 def test_level_and_brief(analysis: Analysis) -> None:
     assert analysis.brief is not None
-    assert analysis.brief.level == "CRITICAL"
-    assert analysis.brief.recommended_action == "ESCALATE"
+    # A very fast, close approach: HIGH. CRITICAL needs more than a steady approach since the
+    # rubric was recalibrated (loops/orbits are the main danger patterns, AGENT_DESIGN §3 step 7).
+    assert analysis.brief.level == "HIGH"
+    assert analysis.brief.recommended_action == "VERIFY"
     assert set(analysis.brief.evidence_ids) >= {"DET-1", "TRK-T0122"}

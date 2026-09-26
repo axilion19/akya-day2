@@ -6,6 +6,7 @@ from app.domain.geo import LatLon
 from app.domain.image import ImageMeta
 from app.domain.report import FieldReport, ReportAssessment
 from app.domain.scene import Zone
+from app.domain.track import MotionProfile, Stop
 from app.services.geo import offset_m
 from app.services.reports import extract_claim, has_instructions, parse_coordinates, verify_claim
 from app.services.risk import level_for, score_vehicle
@@ -184,3 +185,46 @@ def test_pinpointed_claim_links_only_the_nearest_vehicle() -> None:
     result = verify_claim(claim, meta, dets, [], {}, 300, 1.0)
     assert result.verdict == "CORROBORATED"
     assert result.linked_detection_ids == ["DET-2"]
+
+
+def _motion(
+    dist_m: float, speed_ms: float, heading: float | None, eta: float | None
+) -> MotionProfile:
+    """A vehicle east of the base (base bearing 270°) with a fast 60-min approach and stops."""
+    stop = Stop(
+        start="12:00", duration_min=40, position=LatLon(lat=0, lon=0), distance_to_base_m=5000
+    )
+    return MotionProfile(
+        track_id="T1",
+        points=[],
+        path_km=8.0,
+        mean_speed_ms=2.0,
+        last10_speed_ms=speed_ms,
+        heading_deg=heading,
+        bearing_to_base_deg=270.0,
+        dist_now_m=dist_m,
+        dist_30m_ago_m=None,
+        dist_60m_ago_m=None,
+        min_dist_m=dist_m,
+        approach_rate_m_per_min=60.0,
+        stops=[stop, stop],
+        zones_visited=[],
+        eta_to_base_min=eta,
+    )
+
+
+def test_steady_approach_is_capped_unless_very_high() -> None:
+    d = Detection(
+        id="DET-1", label="truck", confidence=0.9, bbox=(0, 0, 40, 20), center_px=(20, 10)
+    )
+    # 1.4 km, fast, pointed at the base: a very high approach may stay HIGH
+    near = score_vehicle(d, None, _motion(1400, 6.0, 268.0, 4.0), [], {}, "steady_approach")
+    assert near.level in ("MEDIUM", "HIGH", "CRITICAL")
+    assert not any(f.name == "ceiling" for f in near.factors)
+    # 3.5 km, slow: a normal approach is LOW whatever its score
+    far = score_vehicle(d, None, _motion(3500, 2.0, 268.0, 30.0), [], {}, "steady_approach")
+    assert far.level == "LOW"
+    # a vehicle looping around the base gets pattern points and may be HIGH
+    loop = score_vehicle(d, None, _motion(1800, 3.0, 90.0, None), [], {}, "loops_around_base")
+    assert any(f.name == "pattern" and f.points == 35 for f in loop.factors)
+    assert loop.level in ("MEDIUM", "HIGH", "CRITICAL")

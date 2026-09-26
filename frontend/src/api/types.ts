@@ -1,5 +1,5 @@
 // UI-facing aliases of generated API types. Never hand-write API shapes; add aliases here.
-import type { components } from './schema'
+import type { components, paths } from './schema'
 
 type Schemas = components['schemas']
 
@@ -32,3 +32,13 @@ export type StepName = StepResult['step']
 export type StepStatus = StepResult['status']
 export type RecommendedAction = Brief['recommended_action']
 export type CheckName = ReportCheck['name']
+
+// Watch mode (recorded demo runs)
+export type WatchRecording = Schemas['WatchRecording']
+export type WatchEvent =
+  paths['/api/watch/recordings/{recording_id}']['get']['responses'][200]['content']['application/json'][number]
+export type WatchEventOf<K extends WatchEvent['type']> = Extract<WatchEvent, { type: K }>
+export type VehicleRow = Schemas['VehicleRow']
+export type WatchLevel = VehicleRow['registry_level']
+export type OperatorAlert = Schemas['OperatorAlert']
+export type FrameDetection = Schemas['FrameDetection']

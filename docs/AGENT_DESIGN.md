@@ -14,12 +14,13 @@ The agent turns one drone frame + the day's shared data pool into an evidence-ci
 
 ---
 
-## 2. Two agent modes
+## 2. Agent modes
 
 | Mode | Shape | Used for |
 |---|---|---|
 | **Analysis pipeline** | Fixed 8-step state machine; LLM called in steps 6 and 8 | The main "evaluate this frame" flow and batch precompute |
 | **Analyst chat** | Tool-calling loop (max 6 tool calls/turn) over the same tools, grounded on a finished analysis | Operator follow-up questions in the demo |
+| **Watch mode** | Replayed day in 5-min ticks: sector watchers (LLM) → car registry → head supervisor (LLM) → trackers (code) | Continuous monitoring demo; contract in §12 |
 
 Rationale for mentors: a fixed pipeline gives reproducibility, cost control and a clean UX; autonomy is used where it adds value (open-ended questions), with the same typed tools.
 
@@ -81,7 +82,13 @@ Per vehicle, 0–100:
 | Corroborated report with threat-relevant claim | 10 |
 | No track match (unknown history) | 0 points + uncertainty flag |
 
-Levels: 0–24 LOW · 25–49 MEDIUM · 50–74 HIGH · 75–100 CRITICAL. Frame level = max vehicle level. The LLM may move the frame level by **at most one step**, only with a cited reason; the validator enforces this.
+Levels: 0–24 LOW · 25–49 MEDIUM · 50–74 HIGH · 75–100 CRITICAL.
+
+**Recalibration (26 Sep, user decision): looping around the base and orbiting it at a fixed range are the main danger patterns; a steady approach is normal traffic.** Implemented in `services/risk.py` and shared by the per-frame rubric and watch mode:
+- Pattern points: `loops_around_base` +35, `fixed_range_orbit` +30 (behavior class from `services/behavior.py`).
+- Approach points only for very fast closing: > 80 m/min +15, > 50 m/min +8 (was 50/20/5 → 25/15/5); heading at base +5 (was 10); long stops within 6 km +5 (+5 if repeated) (was 10/+5).
+- **Level ceiling** (`level_ceiling`): within 1 km of the base → up to HIGH; loop/orbit → HIGH within 5 km, else MEDIUM; approaching now (closing, heading ≤ 45° off the base) → HIGH within 1.5 km or ETA ≤ 5 min, MEDIUM if ≥ 4 m/s and within 3 km or ETA ≤ 12 min, else LOW; moving in a large group (≥ 4 vehicles within 500 m of each other for their last 15 minutes, all moving; `services/behavior.moving_groups`) → MEDIUM (+15 group points); anything else (normal approaches, stop-and-go, transit, parked) → LOW. Vehicles that only meet at the end of their tracks are not a group: every track ends inside its drone frame at capture time, so a frame's 3–10 vehicles always converge there (a data artifact). On the real day there are no moving groups of 4+ (only a few pairs), so the group rule is for live traffic. A capped level adds a `ceiling` factor (0 points). A HIGH ceiling also allows CRITICAL.
+- On the real day: about 1 HIGH per tick, of which 81 % are loops/orbits; the organizer example `img_000860` (a very fast, close approach) is HIGH.
 
 ---
 
@@ -164,9 +171,9 @@ Rules for all prompts:
 
 ## 7. LLM client
 
-- `openai` SDK with `base_url`, `api_key`, `model` from env (GLM endpoint arrives on Saturday).
-- Timeout 30 s, 2 retries with backoff; JSON mode if supported, otherwise "JSON only" + extract first JSON object.
-- Disk cache keyed by `sha256(prompt_version + model + input_json)`.
+- `openai` SDK pointed at the organizer's GLM gateway (`glm-5.3-flash`); key from `GLM_API_KEY` (`app/agent/llm_client.py`, `GLMClient` behind the `ChatLLM` protocol).
+- Timeout 120 s (the model always reasons first), 2 SDK retries, at most 4 concurrent requests (gateway limit); tool calling for structured output, validated with Pydantic.
+- Disk cache keyed by `sha256` of the full request (model, messages, tools, effort) under `backend/.cache/llm/`.
 - Log tokens and latency per call; `/api/health` shows cumulative usage.
 - Budget: extraction ≈ #reports × ~400 tokens once; per frame ≈ 2 calls × ~3k tokens. 40 frames stay well under the 15 $ credit, but cache aggressively during development.
 
@@ -205,3 +212,20 @@ Use the detection as a fixed fixture; do not depend on the model in this test.
 ## 11. Mock data (until the organizer data arrives)
 
 `make mock-data PPTX=<case brief deck>` writes a synthetic day to `data/stage2_mock/` in the exact raw formats of slides 13-14, plus `detections.json` (PrecomputedDetector format, standing in for the Stage 1 model) and the golden fixture `backend/tests/fixtures/golden/`. Hero scenarios: `img_000860` (organizer example; T0122 route traced from the slide plot, image rebuilt from the slide screenshots), `img_000412` (benign), `img_001204` (friendly-exercise claim + wrong official report + prompt injection), `img_000517` (13:05 official report corroborated). `make mock` runs the pipeline on those frames into `frontend/src/mocks/`. Point `.env` `SENTINEL_DATA_DIR` at `data/stage2` once the real files exist; only the loader may need to adapt.
+
+---
+
+## 12. Watch mode contract
+
+Design and walk-through: `docs/AGENT_FLOW.md`. Prompts, tools, models and example payloads: `docs/AGENT_PROMPTS_AND_TOOLS.md`. Code: `backend/app/agent/watch/`, `backend/app/services/watch.py`, models in `backend/app/domain/watch.py`.
+
+- **Tick:** 5 min of replayed time. Tracks are revealed tick by tick (a vehicle is active at a tick if its track has a sample there); frames arrive at their capture time.
+- **Sectors and watchers:** a sector is the area of the nearest zone center. `SENTINEL_WATCHER_COUNT` watchers (default 4) split the 8 sectors into contiguous groups clockwise from north; each watcher checks one sector of its group per tick, in turn, and a sector with a drone frame this tick is checked out of turn. The supervisor also sees unchecked sectors with their MEDIUM/HIGH vehicles.
+- **Frames:** the YOLO detector (`SENTINEL_DETECTOR_*`) runs on each frame at its capture tick; boxes are georeferenced and matched to tracks (Hungarian, `MATCH_MAX_M`); a matched vehicle gets its type in the registry, which adds the rubric's type points.
+- **Levels:** `LOW | MEDIUM | HIGH` per vehicle in the car registry. Each vehicle has a **ceiling** (`VehicleRow.max_level`, `services/risk.level_ceiling`, the same rule as the per-frame rubric in §3 step 7); watchers, supervisor `set_level`, rubric mapping and fallback never exceed it. Loops and orbits are the main danger; a steady approach is normal traffic unless very fast and close. Watchers raise with a two-tick `pending` confirmation, and lower a vehicle down to its ceiling immediately when it no longer justifies its level; the supervisor's `set_level` applies immediately; watchers stay within one level of the (gated) rubric; reports never lower a level.
+- **Agents:** watcher → `submit_watch_report`; supervisor → `submit_supervisor_decision` plus side-effecting `set_level` and `alert_operator` (headline + description to the human operator, no approval step), and `dispatch_tracker` / `recall_tracker` only when trackers are enabled. Each turn: ≤ N read-only lookups, one repair, then deterministic fallback.
+- **Selection:** a watcher must judge vehicles that meet the conditions (rubric or registry level above LOW, notes, pending raise, fast closing, moving new arrival) plus `SENTINEL_WATCHER_SPOT_CHECKS` random quiet ones; the rest are one-liners counted as LOW.
+- **Traces:** every agent turn emits `agent_trace` (prompts, each LLM call with the model's reasoning, tool calls and results, output) for audit and the UI.
+- **Trackers:** off by default (`SENTINEL_TRACKERS_ENABLED`); when on, code follows the real track, `LOST` when it ends (mock extension is backlog).
+- **Events (SSE):** `tick_started` (with each watcher's sector), `frame_analyzed`, `agent_trace`, `watcher_report`, `level_changed`, `supervisor_decision`, `operator_alert`, `tracker_update`, `warning`, `tick_completed` (discriminated union `WatchEvent`).
+- **Endpoints:** `POST /api/watch/runs`, `GET /api/watch/runs/{id}`, `GET /api/watch/runs/{id}/events` (SSE, replays from the start), `GET /api/watch/runs/{id}/log` (typed list), `GET /api/watch/recordings[/{id}]` (recorded runs replayed by the UI's demo page `/watch`).

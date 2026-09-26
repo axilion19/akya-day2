@@ -39,15 +39,15 @@ export function RouteScene({ analysis }: { analysis: Analysis }) {
           })
           return <path key={m.track_id} d={d.join(' ')} fill="none" stroke="rgb(161 161 170 / 0.4)" strokeWidth={2} />
         })}
-        <path d={path} fill="none" stroke="#fbbf24" strokeWidth={3} strokeLinejoin="round" className="animate-in fade-in duration-500" />
-        <line x1={b.x} y1={b.y} x2={now.x} y2={now.y} stroke="#f87171" strokeWidth={2} strokeDasharray="7 6" />
-        <rect x={b.x - 11} y={b.y - 11} width={22} height={22} transform={`rotate(45 ${b.x} ${b.y})`} fill="none" stroke="#f87171" strokeWidth={3} />
-        <text x={b.x + 18} y={b.y + 6} fill="#f87171" fontSize={18}>{t.scene.base}</text>
+        <path d={path} fill="none" stroke="#d97706" strokeWidth={3} strokeLinejoin="round" className="animate-in fade-in duration-500" />
+        <line x1={b.x} y1={b.y} x2={now.x} y2={now.y} stroke="#dc2626" strokeWidth={2} strokeDasharray="7 6" />
+        <rect x={b.x - 11} y={b.y - 11} width={22} height={22} transform={`rotate(45 ${b.x} ${b.y})`} fill="none" stroke="#dc2626" strokeWidth={3} />
+        <text x={b.x + 18} y={b.y + 6} fill="#dc2626" fontSize={18}>{t.scene.base}</text>
         {motion.stops.map((s) => {
           const p = fit.project(toLocalM(base, s.position))
-          return <circle key={s.start} cx={p.x} cy={p.y} r={9} fill="#0b1220" stroke="#a1a1aa" strokeWidth={3} />
+          return <circle key={s.start} cx={p.x} cy={p.y} r={9} fill="#ffffff" stroke="#71717a" strokeWidth={3} />
         })}
-        <circle cx={now.x} cy={now.y} r={10} fill="#fbbf24" />
+        <circle cx={now.x} cy={now.y} r={10} fill="#d97706" />
       </svg>
       <OverlayLabel x={2} y={3}>{t.scene.routeTitle(motion.track_id, first.time, last.time)}</OverlayLabel>
       {motion.stops.map((s) => {
@@ -60,7 +60,7 @@ export function RouteScene({ analysis }: { analysis: Analysis }) {
           </OverlayLabel>
         )
       })}
-      <OverlayLabel x={pct(now).x + 1.5} y={pct(now).y - 2} anchor="bl" className="text-amber-300">
+      <OverlayLabel x={pct(now).x + 1.5} y={pct(now).y - 2} anchor="bl" className="text-amber-700">
         {t.scene.nowAt(last.time, formatKm(motion.dist_now_m))}
       </OverlayLabel>
       <OverlayLabel x={2} y={97} anchor="bl">

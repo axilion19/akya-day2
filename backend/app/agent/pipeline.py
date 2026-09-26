@@ -16,15 +16,17 @@ from app.core.config import Settings
 from app.core.errors import DetectorError, NotFoundError
 from app.data.repository import Repository
 from app.domain.analysis import Analysis
-from app.domain.detection import Detection
+from app.domain.detection import Detection, TrackMatch
 from app.domain.events import STEP_NAMES, StepName, StepResult
 from app.domain.geo import LatLon
 from app.domain.image import ImageMeta
 from app.domain.report import ReportAssessment
 from app.domain.track import TrackSnapshot
+from app.domain.watch import BehaviorClass
 from app.services import motion as motion_svc
 from app.services import reports as report_svc
 from app.services import risk as risk_svc
+from app.services.behavior import behavior_class, moving_groups
 from app.services.detection import Detector
 from app.services.geo import (
     bearing_deg,
@@ -240,6 +242,16 @@ def run_analysis(
     match_by_det = {m.detection_id: m for m in matches}
     motion_by_track = {p.track_id: p for p in motions}
     claim_by_id = {c.report_id: c for c in relevant}
+
+    def behavior_of(match: TrackMatch | None) -> BehaviorClass:
+        motion = motion_by_track.get(match.track_id or "") if match else None
+        return behavior_class(motion.points, repo.scene.base.position) if motion else "unknown"
+
+    groups = moving_groups(list(repo.tracks.values()), meta.capture_min)
+
+    def group_size_of(match: TrackMatch | None) -> int:
+        return max(1, len(groups.get(match.track_id or "", []))) if match else 1
+
     risks = [
         risk_svc.score_vehicle(
             d,
@@ -249,6 +261,8 @@ def run_analysis(
             else None,
             assessments,
             claim_by_id,
+            behavior_of(match_by_det.get(d.id)),
+            group_size_of(match_by_det.get(d.id)),
         )
         for d in detections
     ]

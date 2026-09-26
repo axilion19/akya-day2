@@ -33,7 +33,7 @@ export function StepCard({ step, total, narrative, active, onSelect }: StepCardP
           <span className="font-mono text-[10px] text-muted-foreground">{formatMs(step.duration_ms)}</span>
         </div>
         <p className="mt-1.5 text-sm leading-relaxed">{narrative.headline}</p>
-        {step.status === 'warning' && <p className="mt-1 text-xs text-amber-300">{t.narrative.warning}</p>}
+        {step.status === 'warning' && <p className="mt-1 text-xs text-amber-700">{t.narrative.warning}</p>}
         {narrative.facts.length > 0 && (
           <ul className="mt-1.5 space-y-0.5 font-mono text-xs text-muted-foreground">
             {narrative.facts.map((fact) => (

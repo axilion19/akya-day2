@@ -4,6 +4,8 @@
 
 **Status:** agreed design, not implemented yet. Contracts (models, SSE events, tool schemas) go into `docs/AGENT_DESIGN.md` in the same change as the first watch-mode code; until then, this file is the reference for how the agents fit together. Prompts, tools, models and example inputs/outputs: [`AGENT_PROMPTS_AND_TOOLS.md`](AGENT_PROMPTS_AND_TOOLS.md).
 
+**Current implementation:** 4 watchers share the 8 sectors and take turns (each checks one sector of its 2-sector area per tick; a sector with a drone frame is checked out of turn), trackers are switched off, and the supervisor informs the human operator with a described alert instead of dispatching anyone. Frames run through the YOLO model, so vehicles seen in a frame get their type. Details: [`AGENT_DESIGN.md`](AGENT_DESIGN.md) §12.
+
 **In one paragraph:** we replay the monitoring day on a clock that advances in 5-minute steps. Eight **watcher** agents each observe one sector around the base and rate every vehicle in it as LOW, MEDIUM or HIGH. Watchers leave notes on vehicles in a shared **car registry**, so when a vehicle drives into the next sector, the next watcher knows its history. At every step, each watcher sends a short status message to a **head supervisor** agent. The supervisor looks at the whole picture, spots patterns no single sector can see, and dispatches a **tracker** agent for HIGH-risk vehicles, which then reports the vehicle's position to the authorities (mocked).
 
 ---
@@ -223,7 +225,7 @@ Without tracks this hand-off could not happen: **no vehicle appears in more than
 - **Code computes, the LLM judges.** Every number in a message, note or alert comes from a deterministic tool.
 - **Every claim cites evidence IDs.** Unknown IDs fail validation.
 - **Degrade, never crash.** An LLM failure falls back to the deterministic rubric for that tick and shows a warning.
-- **Pluggable model.** All agents talk to one small LLM-client interface; Claude (fast tier) is the default, and other providers can plug in.
+- **Pluggable model.** All agents talk to one small LLM-client interface; the organizer's GLM gateway (`glm-5.3-flash`) is the default, and other OpenAI-compatible providers can plug in.
 - **Bounded cost.** Each agent call has a tool-call cap; a full day replay is recorded so the demo can replay it without the API.
 
 ---
@@ -245,6 +247,8 @@ Without tracks this hand-off could not happen: **no vehicle appears in more than
 # Ajan Akışı: İzleme Modu (üst düzey) — Türkçe
 
 **Durum:** üzerinde anlaşılmış tasarım, henüz kodlanmadı. Sözleşmeler (modeller, SSE olayları, araç şemaları) ilk izleme modu koduyla aynı değişiklikte `docs/AGENT_DESIGN.md` dosyasına eklenecek; o zamana kadar ajanların nasıl bir araya geldiğinin referansı bu dosyadır. Koddaki adlarla eşleşsin diye İngilizce terimler parantez içinde verilmiştir.
+
+**Güncel uygulama:** 4 gözcü 8 sektörü paylaşır ve sırayla kontrol eder (her biri her tikte 2 sektörlük alanından birine bakar; drone görüntüsü gelen sektör sırası beklenmeden kontrol edilir), takipçiler kapalıdır ve baş denetçi kimseyi görevlendirmek yerine insan operatörü açıklamalı bir uyarıyla bilgilendirir. Görüntüler YOLO modelinden geçer; görüntüde görülen araçların tipi belirlenir. Ayrıntılar: [`AGENT_DESIGN.md`](AGENT_DESIGN.md) §12.
 
 **Tek paragrafta:** İzleme gününü 5 dakikalık adımlarla ilerleyen bir saat üzerinde yeniden oynatıyoruz. Sekiz **gözcü** (watcher) ajan, üssün etrafındaki birer sektörü izler ve oradaki her aracı LOW, MEDIUM veya HIGH olarak derecelendirir. Gözcüler araçlara ortak bir **araç kaydında** (car registry) not bırakır; böylece bir araç komşu sektöre geçtiğinde, oradaki gözcü aracın geçmişini bilir. Her adımda her gözcü, **baş denetçi** (head supervisor) ajana kısa bir durum mesajı gönderir. Baş denetçi bütün resmi görür, tek bir sektörün göremeyeceği örüntüleri yakalar ve HIGH riskli araçlar için bir **takipçi** (tracker) ajan görevlendirir; takipçi aracın konumunu yetkililere bildirir (mock).
 
@@ -465,7 +469,7 @@ Gerçek veri. Bu aynı zamanda organizatörlerin altın örneğidir (`img_000860
 - **Kod hesaplar, LLM yorumlar.** Bir mesajdaki, nottaki veya alarmdaki her sayı deterministik bir araçtan gelir.
 - **Her iddia kanıt kimliği gösterir.** Bilinmeyen kimlikler doğrulamadan geçemez.
 - **Çökme yok, kademeli düşüş var.** LLM hatası o tik için deterministik puanlamaya düşer ve bir uyarı gösterir.
-- **Değiştirilebilir model.** Tüm ajanlar tek bir küçük LLM istemci arayüzüyle konuşur; varsayılan Claude'un (hızlı sürümü), başka sağlayıcılar da takılabilir.
+- **Değiştirilebilir model.** Tüm ajanlar tek bir küçük LLM istemci arayüzüyle konuşur; varsayılan organizatörün GLM geçidi (`glm-5.3-flash`), OpenAI uyumlu başka sağlayıcılar da takılabilir.
 - **Sınırlı maliyet.** Her ajan çağrısının bir araç çağrısı üst sınırı vardır; demoda API olmadan yeniden oynatılabilsin diye tam bir günlük oynatma kaydedilir.
 
 ---

@@ -1,5 +1,4 @@
-# Data, weights, secrets
-/data/
+# Weights, secrets (data/ is committed)
 /models/
 *.pt
 *.onnx

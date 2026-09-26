@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from app import __version__
-from app.api.routes import analyses, field, health, scene
+from app.api.routes import analyses, field, health, scene, watch
 from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
@@ -29,6 +29,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api")
     app.include_router(scene.router, prefix="/api")
     app.include_router(analyses.router, prefix="/api")
+    app.include_router(watch.router, prefix="/api")
     app.include_router(field.router, prefix="/api")
     return app
 

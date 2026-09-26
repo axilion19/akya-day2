@@ -35,15 +35,19 @@ export function useMapViewport(fitRadiusM: number) {
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    const ro = new ResizeObserver(([entry]) => {
-      if (!entry) return
-      const w = entry.contentRect.width || 1
-      const h = entry.contentRect.height || 1
-      setSize({ w, h })
+    const measure = (w: number, h: number) => {
+      setSize({ w: w || 1, h: h || 1 })
       if (!fitted.current && w > 1 && h > 1) {
         fitted.current = true
         setView({ cx: 0, cy: 0, w: fitWidth(fitRadiusM, w, h) })
       }
+    }
+    // Measure once now: until the observer fires the size is 1 px, which would draw every
+    // constant-size marker (mpp = meters per 1 px) across the whole map for a frame.
+    const box = el.getBoundingClientRect()
+    measure(box.width, box.height)
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry) measure(entry.contentRect.width, entry.contentRect.height)
     })
     ro.observe(el)
     const onWheel = (e: WheelEvent) => {
@@ -121,6 +125,8 @@ export function useMapViewport(fitRadiusM: number) {
   return {
     ref,
     viewBox: `${view.cx - view.w / 2} ${view.cy - h / 2} ${view.w} ${h}`,
+    // Visible area in meters, for layers that must cover the whole view (the grid).
+    bounds: { x0: view.cx - view.w / 2, y0: view.cy - h / 2, x1: view.cx + view.w / 2, y1: view.cy + h / 2 },
     mpp,
     flyTo,
     fit,

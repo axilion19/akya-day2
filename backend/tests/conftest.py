@@ -5,7 +5,15 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.agent.store import AnalysisStore
-from app.api.deps import get_detector, get_fallback_detector, get_repository, get_store
+from app.agent.watch.store import WatchRunStore
+from app.api.deps import (
+    get_detector,
+    get_fallback_detector,
+    get_llm,
+    get_repository,
+    get_store,
+    get_watch_store,
+)
 from app.core.config import Settings, get_settings
 from app.data.repository import Repository
 from app.main import create_app
@@ -57,6 +65,9 @@ def _client(settings: Settings, repo: Repository | None) -> Iterator[TestClient]
     )
     store = AnalysisStore()
     app.dependency_overrides[get_store] = lambda: store
+    watch_store = WatchRunStore()
+    app.dependency_overrides[get_watch_store] = lambda: watch_store
+    app.dependency_overrides[get_llm] = lambda: None  # tests never call the real LLM
     if repo is not None:
         app.dependency_overrides[get_repository] = lambda: repo
     else:
