@@ -17,16 +17,18 @@ interface Props {
   onSelect: (id: string) => void
 }
 
-/** Minutes around a capture time during which the frame is shown as "being taken". */
+/** Minutes after a capture time during which the frame is shown as just taken. */
 const LIVE_MIN = 5
 
-/** Drone frame footprints; the one being captured glows, past ones stay dim, the selected one is cyan. Click = detail card. */
+/** Drone frame footprints, shown from their capture time on: that is when the frame's tracks end
+ *  inside it (tracks.csv stops at capture). A fresh frame glows, older ones stay dim, the selected
+ *  one is cyan. Click = detail card. */
 export function FrameLayer({ frames, minute, mpp, selectedId, onSelect }: Props) {
   return (
     <g>
       {frames.map((f) => {
-        const live = Math.abs(minute - f.captureMin) <= LIVE_MIN
-        const past = !live && f.captureMin < minute
+        if (f.captureMin > minute) return null
+        const live = minute - f.captureMin <= LIVE_MIN
         const selected = f.id === selectedId
         const s = (live || selected ? 6 : 4) * mpp
         return (
@@ -38,10 +40,8 @@ export function FrameLayer({ frames, minute, mpp, selectedId, onSelect }: Props)
                 selected
                   ? 'fill-cyan-400/25 stroke-cyan-300'
                   : live
-                  ? 'fill-sky-400/30 stroke-sky-300'
-                  : past
-                    ? 'fill-sky-400/10 stroke-sky-400/50'
-                    : 'fill-none stroke-sky-400/25'
+                    ? 'fill-sky-400/30 stroke-sky-300'
+                    : 'fill-sky-400/10 stroke-sky-400/50'
               }
               vectorEffect="non-scaling-stroke"
             />
@@ -53,7 +53,7 @@ export function FrameLayer({ frames, minute, mpp, selectedId, onSelect }: Props)
               height={2 * s}
               className={cn(
                 'stroke-sky-300 group-hover:fill-sky-300',
-                selected ? 'fill-cyan-300 stroke-cyan-200' : live ? 'fill-sky-300' : past ? 'fill-sky-500/40' : 'fill-transparent opacity-50',
+                selected ? 'fill-cyan-300 stroke-cyan-200' : live ? 'fill-sky-300' : 'fill-sky-500/40',
               )}
               vectorEffect="non-scaling-stroke"
             />

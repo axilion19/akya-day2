@@ -70,7 +70,9 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
   const activeTracks = model.tracks.filter((tr) => tr.startMin <= minute && minute <= tr.endMin).length
 
   const selectedTrack = selection?.kind === 'track' ? tracks.find((tr) => tr.track_id === selection.id) : undefined
+  // A frame is not on the map before its capture time, so neither is its card.
   const selectedFrame = selection?.kind === 'frame' ? model.imageById.get(selection.id) : undefined
+  const frameShown = selectedFrame && selectedFrame.capture_min <= minute ? selectedFrame : undefined
   const selectedReport = selection?.kind === 'report' ? reports.find((r) => r.report_id === selection.id) : undefined
   const motionAt = hhmm(Math.floor(minute / 5) * 5)
   const motion = useTrackMotion(selectedTrack?.track_id ?? null, motionAt)
@@ -118,7 +120,7 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
           frames={visibleFrames}
           minute={minute}
           mpp={mpp}
-          selectedId={selectedFrame?.image_id ?? null}
+          selectedId={frameShown?.image_id ?? null}
           onSelect={(id) => setSelection({ kind: 'frame', id })}
         />
         <TrackLayer
@@ -185,13 +187,13 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
         </div>
       )}
 
-      {selectedFrame && (
+      {frameShown && (
         <div className={cn('absolute right-[21.5rem]', feedOpen ? 'top-3' : 'top-16')}>
           <FrameDetail
-            key={selectedFrame.image_id}
-            frame={selectedFrame}
-            trackCount={tracks.filter((tr) => tr.image_id === selectedFrame.image_id).length}
-            onAnalyze={() => void navigate(`/analysis/${selectedFrame.image_id}`)}
+            key={frameShown.image_id}
+            frame={frameShown}
+            trackCount={tracks.filter((tr) => tr.image_id === frameShown.image_id).length}
+            onAnalyze={() => void navigate(`/analysis/${frameShown.image_id}`)}
             onClose={() => setSelection(null)}
           />
         </div>
