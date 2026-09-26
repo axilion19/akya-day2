@@ -97,8 +97,41 @@ OPERATOR_FALLBACK: dict[Lang, str] = {
     "tr": "Mesajınızı aldım, ancak şu an işleyemedim; lütfen birazdan tekrar yazın.",
     "en": "Message received, but I could not act on it now; please write again shortly.",
 }
+OPERATOR_DONE: dict[Lang, dict[str, str]] = {
+    "tr": {
+        "watcher": "{wid} oluşturuldu; {sector} bölgesini bu tikten itibaren her tik kontrol "
+        "edecek, diğer gözcüler bu sektörü artık atlıyor.",
+        "expected": "{eid} kaydedildi: {sector} üzerinden {start}–{end} arasında gelecek araç. "
+        "Göründüğünde LOW tutulacak, tehdit olarak işaretlenmeyecek.",
+    },
+    "en": {
+        "watcher": "{wid} created; it checks {sector} every tick from this tick on, and the other "
+        "watchers now skip that sector.",
+        "expected": "{eid} registered: the vehicle coming through {sector} between {start} and "
+        "{end}. Once it appears it is kept LOW, not marked as a threat.",
+    },
+}
+PLACES_TR = {
+    "Kuzey Yolu": "Kuzey Yolu",
+    "Kuzeydogu Kavsagi": "Kuzeydoğu Kavşağı",
+    "Dogu Yolu": "Doğu Yolu",
+    "Guneydogu Yerlesimi": "Güneydoğu Yerleşimi",
+    "Guney Kapisi Yaklasimi": "Güney Kapısı Yaklaşımı",
+    "Guneybati Yolu": "Güneybatı Yolu",
+    "Bati Yerlesimi": "Batı Yerleşimi",
+    "Kuzeybati Yolu": "Kuzeybatı Yolu",
+}
 
 
-def operator_fallback(lang: Lang) -> str:
-    """The supervisor's reply to the operator when the LLM is unavailable (no action taken)."""
-    return OPERATOR_FALLBACK[lang]
+def operator_fallback(lang: Lang, done: list[dict[str, str]] | None = None) -> str:
+    """The supervisor's reply to the operator without the LLM's own words: what its tools did
+    (`done`: {"kind": "watcher" | "expected", ...fields}), or that nothing was done."""
+    if not done:
+        return OPERATOR_FALLBACK[lang]
+    place = PLACES_TR if lang == "tr" else {}
+    return " ".join(
+        OPERATOR_DONE[lang][d["kind"]].format(
+            **(d | {"sector": place.get(d["sector"], d["sector"])})
+        )
+        for d in done
+    )

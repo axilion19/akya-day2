@@ -482,7 +482,7 @@ export const tr = {
       operator: (time: string) => `Operatör · ${time}`,
       supervisor: 'Baş Denetçi',
       thinking: 'Baş Denetçi yanıtlıyor…',
-      placeholder: 'Baş Denetçiye yazın… (demo: mesajlar senaryodan gelir)',
+      placeholder: 'Baş Denetçiye yazın…',
       tools: { create_watcher: 'Gözcü oluşturdu', register_expected_vehicle: 'Bildirilen aracı kaydetti' } as Record<string, string>,
     },
     reportChecks: 'Saha raporu değerlendirmeleri',

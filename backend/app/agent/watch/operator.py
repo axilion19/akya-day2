@@ -76,6 +76,7 @@ class _Effects:
     def __init__(self, ctx: t.WatchContext, inp: OperatorInput, board: OperatorBoard) -> None:
         self.ctx, self.inp, self.board = ctx, inp, board
         self.actions: list[SupervisorAction] = []
+        self.done: list[dict[str, str]] = []  # for a templated reply if the model writes none
 
     def _sector(self, raw: Any) -> str:
         sector = resolve_sector(str(raw or ""), self.ctx.repo.scene.zones)
@@ -88,6 +89,7 @@ class _Effects:
         sector = self._sector(args.get("sector"))
         reason = str(args.get("reason") or "").strip() or "operator request"
         wid = self.board.create_watcher(sector, reason)
+        self.done.append({"kind": "watcher", "wid": wid, "sector": sector})
         self.actions.append(
             SupervisorAction(tool="create_watcher", ok=True, summary=f"{wid} · {sector}: {reason}")
         )
@@ -114,6 +116,15 @@ class _Effects:
                 arrive_to=end,
                 vehicle_type=kind if kind in ("car", "van", "truck", "bus") else None,
             )
+        )
+        self.done.append(
+            {
+                "kind": "expected",
+                "eid": vehicle.expected_id,
+                "sector": sector,
+                "start": start,
+                "end": end,
+            }
         )
         self.actions.append(
             SupervisorAction(
@@ -213,7 +224,7 @@ async def run_operator_turn(
     if loop.output is None and reply is not None:
         warnings.append("reply taken from the model's text (reply_operator not called)")
     return OperatorOutcome(
-        reply=reply if reply is not None else operator_fallback(lang),
+        reply=reply if reply is not None else operator_fallback(lang, effects.done),
         generated_by="llm" if reply is not None else "fallback",
         duration_ms=loop.duration_ms,
         actions=effects.actions,

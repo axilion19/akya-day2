@@ -162,3 +162,22 @@ def test_a_plain_text_answer_is_the_reply(
 
 def await_(coro: Any) -> Any:
     return asyncio.run(coro)
+
+
+def test_fallback_reply_says_what_the_tools_did() -> None:
+    from app.agent.fallback_templates import operator_fallback
+
+    done = [
+        {"kind": "watcher", "wid": "W5", "sector": "Dogu Yolu"},
+        {
+            "kind": "expected",
+            "eid": "EXP-1",
+            "sector": "Kuzey Yolu",
+            "start": "10:45",
+            "end": "11:05",
+        },
+    ]
+    text = operator_fallback("tr", done)
+    assert text.startswith("W5 oluşturuldu; Doğu Yolu bölgesini")
+    assert "EXP-1 kaydedildi: Kuzey Yolu üzerinden 10:45–11:05" in text and "LOW" in text
+    assert operator_fallback("tr", []).startswith("Mesajınızı aldım")
