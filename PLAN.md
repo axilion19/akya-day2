@@ -186,3 +186,10 @@ Paste one per phase. Each assumes Claude reads `CLAUDE.md` files automatically.
 
 **P4 — breadth**
 > Add batch precompute, replay mode, the overview dashboard and the reports inspector. Then the chat drawer if everything else is green.
+
+---
+
+## 10. Backlog (not in the first plan)
+
+- **Camera re-sighting (mock only).** In the real data no track ever appears in a second frame (checked across all 226 tracks × 25 points against all 40 frames). A "check the cameras ahead of this car" tool can therefore only list frames in the direction of travel with their capture times; re-finding the car there needs synthetic sightings, clearly labelled `SIMULATED` in UI and slides. Owner phase: after the watch-mode MVP.
+- **Mock track extension + tracker lifecycle.** Extend tracks past their frame's capture time as mock data (no new images). Trackers then follow a car through DISPATCHED → FOLLOWING (real track) → EXTRAPOLATING (mock, growing uncertainty radius) → LOST / RECALLED / HANDED TO AUTHORITIES; each authority report carries `{coords, speed, heading, uncertainty_m, source: REAL | SIMULATED}`. Owner phase: when the mock track data is added.
