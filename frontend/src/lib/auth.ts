@@ -73,9 +73,18 @@ export function clearSession(): void {
   }
 }
 
-/** Only in-app paths. "//host" and "/\host" are protocol-relative in browsers, so they are rejected. */
+/**
+ * Only in-app paths. Resolved with the URL parser rather than prefix checks: the parser strips tabs
+ * and newlines and treats "\" as "/", so "/\t/host" or "/\host" would reach another origin (and
+ * react-router throws on external targets instead of navigating).
+ */
 export function safeNextPath(next: string | null): string {
-  if (!next || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) return '/'
-  if (next === '/login' || next.startsWith('/login?')) return '/'
-  return next
+  if (!next || !next.startsWith('/')) return '/'
+  try {
+    const url = new URL(next, window.location.origin)
+    if (url.origin !== window.location.origin || url.pathname === '/login') return '/'
+    return url.pathname + url.search + url.hash
+  } catch {
+    return '/'
+  }
 }
