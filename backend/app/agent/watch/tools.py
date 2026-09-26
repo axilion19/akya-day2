@@ -16,6 +16,7 @@ from app.domain.geo import LatLon
 from app.domain.report import ReportClaim
 from app.domain.watch import VehicleRow
 from app.services import watch as watch_svc
+from app.services.behavior import behavior_class
 from app.services.motion import motion_profile
 
 JsonDict = dict[str, Any]
@@ -88,7 +89,7 @@ SUBMIT_WATCH_REPORT = _fn(
     "an entry for every vehicle in <vehicles>.",
     {
         "tick": {"type": "string", "description": "HH:MM of this tick"},
-        "street_state": {"type": "string", "description": "One or two sentences."},
+        "street_state": {"type": "string", "description": "One sentence, at most 20 words."},
         "vehicles": {
             "type": "array",
             "items": {
@@ -96,9 +97,12 @@ SUBMIT_WATCH_REPORT = _fn(
                 "properties": {
                     "track_id": _TRACK_ID,
                     "level": _LEVEL,
-                    "reason": {"type": "string", "description": "One sentence."},
+                    "reason": {"type": "string", "description": "At most 15 words."},
                     "evidence_ids": _EVIDENCE,
-                    "note": {"type": ["string", "null"], "description": "New note or null."},
+                    "note": {
+                        "type": ["string", "null"],
+                        "description": "At most 12 words, or null if nothing new.",
+                    },
                 },
                 "required": ["track_id", "level", "reason", "evidence_ids", "note"],
             },
@@ -110,7 +114,7 @@ SUBMIT_WATCH_REPORT = _fn(
                 "type": "object",
                 "properties": {
                     "track_ids": {"type": "array", "items": {"type": "string"}},
-                    "description": {"type": "string"},
+                    "description": {"type": "string", "description": "At most 20 words."},
                     "evidence_ids": _EVIDENCE,
                 },
                 "required": ["track_ids", "description", "evidence_ids"],
@@ -150,11 +154,11 @@ ALERT_OPERATOR = _fn(
     {
         "track_ids": {"type": "array", "items": {"type": "string"}},
         "urgency": {"type": "string", "enum": ["advisory", "urgent", "immediate"]},
-        "headline": {"type": "string", "description": "One line the operator reads first."},
+        "headline": {"type": "string", "description": "At most 12 words; read first."},
         "description": {
             "type": "string",
-            "description": "What is happening, where, which vehicles, how close and how fast, "
-            "why you believe it, and what would show it is harmless.",
+            "description": "At most 40 words: what is happening, where, which vehicles, how "
+            "close and fast, and what would show it is harmless.",
         },
         "evidence_ids": _EVIDENCE,
     },
@@ -165,7 +169,7 @@ SUBMIT_SUPERVISOR_DECISION = _fn(
     "Close this tick. Call exactly once, last, also when you took no action.",
     {
         "tick": {"type": "string"},
-        "situation_summary": {"type": "string", "description": "Two to four sentences."},
+        "situation_summary": {"type": "string", "description": "At most 2 sentences, 35 words."},
         "threat_level": _LEVEL,
         "patterns": {
             "type": "array",
@@ -273,14 +277,15 @@ def _route(ctx: WatchContext, tid: str) -> JsonDict:
         else:
             sectors.append({"sector": s, "from": p.time, "to": p.time})
     vehicle_type = ctx.registry.get(tid).vehicle_type
-    rubric = watch_svc.track_rubric(motion, vehicle_type)
+    behavior = behavior_class(points, ctx.base)
+    rubric = watch_svc.track_rubric(motion, vehicle_type, behavior)
     return {
         "track_id": tid,
         "vehicle_type": vehicle_type,
         "until_tick": points[-1].time,
         "points": [[p.time, round(p.position.lat, 6), round(p.position.lon, 6)] for p in points],
         "motion": motion.model_dump(mode="json", exclude={"points", "track_id"}),
-        "behavior_class": watch_svc.behavior_class(points, ctx.base),
+        "behavior_class": behavior,
         "sectors": sectors,
         "rubric": rubric.model_dump(mode="json"),
     }

@@ -51,7 +51,7 @@ def test_create_then_get_analysis_reuses_latest(golden_client: TestClient) -> No
     analysis = golden_client.get(f"/api/analyses/{first['analysis_id']}").json()
     assert analysis["status"] == "done"
     assert [s["index"] for s in analysis["steps"]] == list(range(1, 9))
-    assert analysis["brief"]["level"] == "CRITICAL"
+    assert analysis["brief"]["level"] == "HIGH"
 
 
 def test_unknown_image_is_404(golden_client: TestClient) -> None:

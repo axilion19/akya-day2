@@ -1237,10 +1237,13 @@ export interface components {
             behavior_class: "steady_approach" | "loops_around_base" | "fixed_range_orbit" | "mixed_transit" | "leaving_base" | "parked" | "unknown";
             rubric: components["schemas"]["Rubric"];
             /**
-             * Imminent
-             * @default false
+             * Max Level
+             * @default HIGH
+             * @enum {string}
              */
-            imminent: boolean;
+            max_level: "LOW" | "MEDIUM" | "HIGH";
+            /** Group Ids */
+            group_ids: string[];
             /**
              * Registry Level
              * @enum {string}

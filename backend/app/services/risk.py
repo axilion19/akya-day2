@@ -4,6 +4,8 @@ from app.domain.detection import Detection, TrackMatch
 from app.domain.report import ReportAssessment, ReportClaim
 from app.domain.risk import RISK_LEVELS, RiskFactor, RiskLevel, VehicleRisk
 from app.domain.track import MotionProfile
+from app.domain.watch import BehaviorClass, WatchLevel
+from app.services.behavior import DANGER_PATTERNS, LARGE_GROUP
 from app.services.geo import angle_diff_deg
 
 TYPE_POINTS = {"truck": 10, "bus": 8, "van": 5}
@@ -13,37 +15,94 @@ MOVING_MS = 1.0
 HEADING_TOLERANCE_DEG = 30
 
 
-# HIGH/CRITICAL means an imminent threat, not "approaching": roads lead to the base and about half
-# the vehicles in the data drive toward it at some point. One definition for the whole app.
-IMMINENT_DIST_M = 2000  # closing on the base and this close ...
-IMMINENT_ETA_MIN = 8.0  # ... or arriving this soon
-IMMINENT_HEADING_DEG = 45  # driving roughly at the base
-AT_BASE_M = 1000  # this close to the base is HIGH-eligible whatever it does
+# What counts as danger (user decision, 26 Sep): looping around the base and orbiting it at a
+# fixed range are the main danger patterns. Driving toward the base is normal traffic (roads lead
+# to it; about half the vehicles approach it at some point): only a very high approach may reach
+# MEDIUM or HIGH. One definition for the whole app: watch mode and the per-frame rubric.
+PATTERN_POINTS: dict[str, int] = {"loops_around_base": 35, "fixed_range_orbit": 30}
+AT_BASE_M = 1000  # this close to the base may be HIGH whatever it does
+PATTERN_HIGH_M = 5000  # a danger pattern within this distance may be HIGH, else MEDIUM
+APPROACH_HEADING_DEG = 45  # "driving at the base"
+APPROACH_HIGH_M, APPROACH_HIGH_ETA_MIN = 1500, 5.0  # very high approach: HIGH allowed
+APPROACH_MEDIUM_MS = 4.0  # fast approach ...
+APPROACH_MEDIUM_M, APPROACH_MEDIUM_ETA_MIN = 3000, 12.0  # ... this close or soon: MEDIUM allowed
 
 
-def is_imminent(
-    dist_m: float, closing_now: bool, heading_vs_base_deg: float | None, eta_min: float | None
-) -> bool:
-    """At the base, or closing on it now, pointed at it, and within IMMINENT_DIST_M or
-    IMMINENT_ETA_MIN. Distances in m, angles in degrees, ETA in minutes."""
+def level_ceiling(
+    dist_m: float,
+    speed_ms: float,
+    closing_now: bool,
+    heading_vs_base_deg: float | None,
+    eta_min: float | None,
+    behavior: BehaviorClass,
+    group_size: int = 1,
+) -> WatchLevel:
+    """Highest level a vehicle may get (m, m/s, degrees, minutes):
+    - within AT_BASE_M: HIGH;
+    - looping around / orbiting the base: HIGH within PATTERN_HIGH_M, else MEDIUM;
+    - approaching now (closing, pointed at the base): HIGH if within APPROACH_HIGH_M or
+      APPROACH_HIGH_ETA_MIN; MEDIUM if faster than APPROACH_MEDIUM_MS and within
+      APPROACH_MEDIUM_M or APPROACH_MEDIUM_ETA_MIN;
+    - moving in a large group (LARGE_GROUP+ vehicles together): MEDIUM;
+    - anything else (other approaches, stops, parked, transit): LOW."""
     if dist_m <= AT_BASE_M:
-        return True
-    pointed = heading_vs_base_deg is not None and heading_vs_base_deg <= IMMINENT_HEADING_DEG
-    soon = eta_min is not None and eta_min <= IMMINENT_ETA_MIN
-    return closing_now and pointed and (dist_m <= IMMINENT_DIST_M or soon)
+        return "HIGH"
+    if behavior in DANGER_PATTERNS:
+        return "HIGH" if dist_m <= PATTERN_HIGH_M else "MEDIUM"
+    pointed = heading_vs_base_deg is not None and heading_vs_base_deg <= APPROACH_HEADING_DEG
+    if closing_now and pointed:
+        if dist_m <= APPROACH_HIGH_M or (eta_min is not None and eta_min <= APPROACH_HIGH_ETA_MIN):
+            return "HIGH"
+        near = dist_m <= APPROACH_MEDIUM_M or (
+            eta_min is not None and eta_min <= APPROACH_MEDIUM_ETA_MIN
+        )
+        if speed_ms >= APPROACH_MEDIUM_MS and near:
+            return "MEDIUM"
+    return "MEDIUM" if group_size >= LARGE_GROUP else "LOW"
 
 
-def motion_is_imminent(motion: MotionProfile | None, dist_m: float | None) -> bool:
-    """`is_imminent` for a frame vehicle: closing now = moving at the base in the last 10 min."""
+def motion_ceiling(
+    motion: MotionProfile | None, dist_m: float | None, behavior: BehaviorClass, group_size: int = 1
+) -> WatchLevel:
+    """`level_ceiling` for a frame vehicle: closing now = moving at the base in the last 10 min."""
     if motion is None:
-        return dist_m is not None and dist_m <= AT_BASE_M
+        return "HIGH" if dist_m is not None and dist_m <= AT_BASE_M else "MEDIUM"
     heading_diff = (
         None
         if motion.heading_deg is None
         else angle_diff_deg(motion.heading_deg, motion.bearing_to_base_deg)
     )
     moving = motion.last10_speed_ms >= MOVING_MS
-    return is_imminent(motion.dist_now_m, moving, heading_diff, motion.eta_to_base_min)
+    return level_ceiling(
+        motion.dist_now_m,
+        motion.last10_speed_ms,
+        moving,
+        heading_diff,
+        motion.eta_to_base_min,
+        behavior,
+        group_size,
+    )
+
+
+def cap_level(level: RiskLevel, ceiling: WatchLevel) -> RiskLevel:
+    """`level` limited to `ceiling` (a HIGH ceiling also allows CRITICAL)."""
+    if ceiling == "HIGH":
+        return level
+    return min(level, ceiling, key=RISK_LEVELS.index)
+
+
+GROUP_POINTS = 15
+
+
+def group_factor(group_size: int) -> RiskFactor:
+    """Points for moving in a large group (LARGE_GROUP+ vehicles together)."""
+    points = GROUP_POINTS if group_size >= LARGE_GROUP else 0
+    return RiskFactor(name="group", points=points, detail=f"{group_size} moving together")
+
+
+def pattern_factor(behavior: BehaviorClass) -> RiskFactor:
+    """Points for the danger patterns (looping around / orbiting the base)."""
+    return RiskFactor(name="pattern", points=PATTERN_POINTS.get(behavior, 0), detail=behavior)
 
 
 def level_for(score: int) -> RiskLevel:
@@ -71,7 +130,7 @@ def motion_factors(motion: MotionProfile) -> list[RiskFactor]:
     factors.append(
         RiskFactor(
             name="approach_rate",
-            points=_tier(rate, ((50, 25), (20, 15), (5, 5)), below=False),
+            points=_tier(rate, ((80, 15), (50, 8)), below=False),
             detail=f"{rate:+.1f} m/min over 60 min",
         )
     )
@@ -83,7 +142,7 @@ def motion_factors(motion: MotionProfile) -> list[RiskFactor]:
     factors.append(
         RiskFactor(
             name="heading_to_base",
-            points=10 if pointing else 0,
+            points=5 if pointing else 0,
             detail=(
                 f"heading {motion.heading_deg:.0f}°, base at {motion.bearing_to_base_deg:.0f}°"
                 if motion.heading_deg is not None
@@ -96,7 +155,7 @@ def motion_factors(motion: MotionProfile) -> list[RiskFactor]:
         for s in motion.stops
         if s.duration_min >= LONG_STOP_MIN and s.distance_to_base_m <= STOP_NEAR_BASE_M
     ]
-    stop_pts = 0 if not long_stops else 10 + (5 if len(long_stops) > 1 else 0)
+    stop_pts = 0 if not long_stops else 5 + (5 if len(long_stops) > 1 else 0)
     factors.append(
         RiskFactor(
             name="stops_near_base",
@@ -113,6 +172,8 @@ def score_vehicle(
     motion: MotionProfile | None,
     assessments: list[ReportAssessment],
     claims: dict[str, ReportClaim],
+    behavior: BehaviorClass = "unknown",
+    group_size: int = 1,
 ) -> VehicleRisk:
     """Score one vehicle 0-100 with an explicit factor breakdown."""
     factors: list[RiskFactor] = []
@@ -122,6 +183,8 @@ def score_vehicle(
 
     if motion is not None:
         factors.extend(motion_factors(motion))
+        factors.append(pattern_factor(behavior))
+        factors.append(group_factor(group_size))
     else:
         factors.append(RiskFactor(name="no_track", points=0, detail="unknown history"))
 
@@ -150,11 +213,11 @@ def score_vehicle(
         )
 
     score = min(100, sum(f.points for f in factors))
-    level = level_for(score)
-    if level in ("HIGH", "CRITICAL") and not motion_is_imminent(motion, dist):
-        level = "MEDIUM"
+    ceiling = motion_ceiling(motion, dist, behavior, group_size)
+    level = cap_level(level_for(score), ceiling)
+    if level != level_for(score):
         factors.append(
-            RiskFactor(name="not_imminent", points=0, detail=f"score {score}: capped at MEDIUM")
+            RiskFactor(name="ceiling", points=0, detail=f"score {score}: capped at {ceiling}")
         )
     return VehicleRisk(
         detection_id=detection.id,

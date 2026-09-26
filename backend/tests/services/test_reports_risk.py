@@ -213,17 +213,18 @@ def _motion(
     )
 
 
-def test_high_is_capped_at_medium_unless_imminent() -> None:
+def test_steady_approach_is_capped_unless_very_high() -> None:
     d = Detection(
         id="DET-1", label="truck", confidence=0.9, bbox=(0, 0, 40, 20), center_px=(20, 10)
     )
-    # 1.8 km, closing, pointed at the base: imminent -> keeps HIGH
-    near = score_vehicle(d, None, _motion(1800, 6.0, 268.0, 5.0), [], {})
-    assert near.level in ("HIGH", "CRITICAL")
-    # 3.5 km, same speed and heading, ETA 10 min: approaching but not imminent -> MEDIUM
-    far = score_vehicle(d, None, _motion(3500, 6.0, 268.0, 10.0), [], {})
-    assert far.score >= 50 and far.level == "MEDIUM"
-    assert far.factors[-1].name == "not_imminent"
-    # parked 1.8 km out: not imminent either
-    parked = score_vehicle(d, None, _motion(1800, 0.0, None, None), [], {})
-    assert parked.level != "HIGH"
+    # 1.4 km, fast, pointed at the base: a very high approach may stay HIGH
+    near = score_vehicle(d, None, _motion(1400, 6.0, 268.0, 4.0), [], {}, "steady_approach")
+    assert near.level in ("MEDIUM", "HIGH", "CRITICAL")
+    assert not any(f.name == "ceiling" for f in near.factors)
+    # 3.5 km, slow: a normal approach is LOW whatever its score
+    far = score_vehicle(d, None, _motion(3500, 2.0, 268.0, 30.0), [], {}, "steady_approach")
+    assert far.level == "LOW"
+    # a vehicle looping around the base gets pattern points and may be HIGH
+    loop = score_vehicle(d, None, _motion(1800, 3.0, 90.0, None), [], {}, "loops_around_base")
+    assert any(f.name == "pattern" and f.points == 35 for f in loop.factors)
+    assert loop.level in ("MEDIUM", "HIGH", "CRITICAL")

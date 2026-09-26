@@ -7,6 +7,7 @@ import pytest
 from app.domain.geo import LatLon
 from app.domain.scene import Zone
 from app.domain.track import Track, TrackPoint
+from app.domain.watch import VehicleRow
 from app.services import watch as w
 
 BASE = LatLon(lat=39.92184, lon=32.85306)
@@ -131,11 +132,11 @@ def test_ticks_are_five_minutes_inclusive() -> None:
     assert w.ticks(13 * 60 + 52, 14 * 60 + 5) == [835, 840, 845]
 
 
-def test_imminent_needs_closing_now_and_close_or_soon() -> None:
-    far = track([(2400 + 1800 * (9 - i), 0) for i in range(10)])  # 6 m/s, 2.4 km out: ETA ~6.7 min
-    row = w.vehicle_row(
-        far,
-        far.points[-1].time_min,
+def _row(points: list[tuple[float, float]]) -> "VehicleRow":
+    t = track(points)
+    return w.vehicle_row(
+        t,
+        t.points[-1].time_min,
         BASE,
         ZONES,
         stop_speed_ms=1.0,
@@ -146,34 +147,43 @@ def test_imminent_needs_closing_now_and_close_or_soon() -> None:
         notes_count=0,
         lang="en",
     )
-    assert row.imminent  # ETA within 8 min
-    slow = track([(6000 - 60 * i, 0) for i in range(10)])  # 5.5 km out, slow: not imminent
-    row = w.vehicle_row(
-        slow,
-        slow.points[-1].time_min,
-        BASE,
-        ZONES,
-        stop_speed_ms=1.0,
-        zone_radius_m=2000,
-        prev_sector="E",
-        registry_level="LOW",
-        pending_level=None,
-        notes_count=0,
-        lang="en",
-    )
-    assert not row.imminent and w.gated_level("HIGH", row) == "MEDIUM"
-    parked = track([(800, 0)] * 6)  # parked 800 m from the base: HIGH-eligible
-    row = w.vehicle_row(
-        parked,
-        parked.points[-1].time_min,
-        BASE,
-        ZONES,
-        stop_speed_ms=1.0,
-        zone_radius_m=2000,
-        prev_sector="E",
-        registry_level="LOW",
-        pending_level=None,
-        notes_count=0,
-        lang="en",
-    )
-    assert row.imminent
+
+
+def test_ceiling_favours_patterns_over_approach() -> None:
+    fast_close = _row([(1400 + 1800 * (9 - i), 0) for i in range(10)])  # 6 m/s, 1.4 km out
+    assert fast_close.max_level == "HIGH"
+    fast_mid = _row([(2800 + 1500 * (9 - i), 0) for i in range(10)])  # 5 m/s, 2.8 km out
+    assert fast_mid.max_level == "MEDIUM"
+    slow = _row([(6000 - 60 * i, 0) for i in range(10)])  # slow approach, 5.5 km out
+    assert slow.max_level == "LOW" and w.gated_level("HIGH", slow) == "LOW"
+    loop = _row([(900 * math.cos(a / 3), 900 * math.sin(a / 3)) for a in range(20)])
+    assert loop.behavior_class == "loops_around_base" and loop.max_level == "HIGH"
+    assert any(f.name == "pattern" and f.points > 0 for f in loop.rubric.factors)
+
+
+def test_moving_groups_need_to_travel_together_not_just_meet() -> None:
+    from app.services.behavior import moving_groups
+
+    def tr(tid: str, pts: list[tuple[float, float]]) -> Track:
+        t = track(pts)
+        return t.model_copy(update={"track_id": tid})
+
+    # four vehicles driving side by side for 15 minutes: one group of 4
+    convoy = [tr(f"C{i}", [(3000 + 100 * i, 4000 - 800 * k) for k in range(4)]) for i in range(4)]
+    # four vehicles from four directions that only meet at the last sample (a frame's footprint)
+    meet = [
+        tr(f"M{i}", [(-3000 + 1000 * k * dx, 3000 + 1000 * k * dy) for k in range(4)])
+        for i, (dx, dy) in enumerate([(1, 0), (0, -1), (1, -1), (0.5, -1)])
+    ]
+    groups = moving_groups([*convoy, *meet], convoy[0].points[-1].time_min)
+    assert groups["C0"] == ["C0", "C1", "C2", "C3"]
+    assert not any(t.startswith("M") for t in groups)
+
+
+def test_other_vehicles_are_medium_only_in_a_large_group() -> None:
+    from app.services.risk import level_ceiling
+
+    args = (2700.0, 5.0, False, None, None, "mixed_transit")
+    assert level_ceiling(*args) == "LOW"
+    assert level_ceiling(*args, group_size=3) == "LOW"
+    assert level_ceiling(*args, group_size=4) == "MEDIUM"

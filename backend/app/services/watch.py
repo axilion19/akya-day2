@@ -5,7 +5,6 @@ lookups. Distances in meters, speeds in m/s, rates in m/min, bearings in degrees
 """
 
 import math
-from itertools import pairwise
 from typing import Literal
 
 from app.core.timefmt import to_minutes
@@ -17,6 +16,7 @@ from app.domain.risk import RiskFactor, RiskLevel
 from app.domain.scene import Zone
 from app.domain.track import MotionProfile, Track, TrackPoint
 from app.domain.watch import (
+    WATCH_LEVELS,
     BehaviorClass,
     FrameDetection,
     ReportLookup,
@@ -25,10 +25,18 @@ from app.domain.watch import (
     VehicleStatus,
     WatchLevel,
 )
+from app.services.behavior import behavior_class
 from app.services.geo import angle_diff_deg, bearing_deg, haversine_m, pixel_to_latlon
 from app.services.motion import motion_profile
-from app.services.risk import TYPE_POINTS, distance_factor, level_for, motion_factors
-from app.services.risk import is_imminent as risk_is_imminent
+from app.services.risk import (
+    TYPE_POINTS,
+    distance_factor,
+    group_factor,
+    level_ceiling,
+    level_for,
+    motion_factors,
+    pattern_factor,
+)
 from app.services.tracks import match_detections, tracks_at
 
 WATCH_LEVEL_OF: dict[RiskLevel, WatchLevel] = {
@@ -41,14 +49,6 @@ TICK_MIN = 5
 MOVING_STEP_M = 30.0  # moved more than this during the last tick => moving
 LONG_STOP_MIN = 20
 NEAR_BASE_M = 6000.0
-# Behavior classes (thresholds from docs/figures/stage2_data_overview.png)
-PARKED_MAX_PATH_M = 300.0
-LEAVING_START_M = 1300.0
-LEAVING_GAIN_M = 1500.0
-LOOP_SWEEP_DEG = 270.0
-ORBIT_MIN_PATH_M = 12000.0
-ORBIT_MAX_RANGE_M = 600.0
-APPROACH_GAIN_M = 1500.0
 
 Lang = Literal["tr", "en"]
 _COMPASS = {
@@ -84,34 +84,20 @@ def track_until(track: Track, minute: int) -> Track | None:
     return Track(track_id=track.track_id, points=points)
 
 
-def behavior_class(points: list[TrackPoint], base: LatLon) -> BehaviorClass:
-    """Static classification of a route so far (see the overview figure for the classes)."""
-    if len(points) < 3:
-        return "unknown"
-    dists = [haversine_m(p.position, base) for p in points]
-    path = sum(haversine_m(a.position, b.position) for a, b in pairwise(points))
-    bearings = [bearing_deg(base, p.position) for p in points]
-    sweep, unwrapped = 0.0, 0.0
-    for a, b in pairwise(bearings):
-        unwrapped += (b - a + 180) % 360 - 180
-        sweep = max(sweep, abs(unwrapped))
-    if path < PARKED_MAX_PATH_M:
-        return "parked"
-    if dists[0] < LEAVING_START_M and dists[-1] - dists[0] > LEAVING_GAIN_M:
-        return "leaving_base"
-    if sweep > LOOP_SWEEP_DEG:
-        return "loops_around_base"
-    if path > ORBIT_MIN_PATH_M and max(dists) - min(dists) < ORBIT_MAX_RANGE_M:
-        return "fixed_range_orbit"
-    if dists[0] - dists[-1] > APPROACH_GAIN_M:
-        return "steady_approach"
-    return "mixed_transit"
-
-
-def track_rubric(motion: MotionProfile, vehicle_type: str | None = None) -> Rubric:
+def track_rubric(
+    motion: MotionProfile,
+    vehicle_type: str | None = None,
+    behavior: BehaviorClass = "unknown",
+    group_size: int = 1,
+) -> Rubric:
     """Rubric from the track (AGENT_DESIGN §3 step 7) plus vehicle-type points when a frame
     detection gave the type; report points are left to the agents."""
-    factors = [distance_factor(motion.dist_now_m), *motion_factors(motion)]
+    factors = [
+        distance_factor(motion.dist_now_m),
+        *motion_factors(motion),
+        pattern_factor(behavior),
+        group_factor(group_size),
+    ]
     if vehicle_type is not None:
         factors.append(
             RiskFactor(
@@ -122,21 +108,27 @@ def track_rubric(motion: MotionProfile, vehicle_type: str | None = None) -> Rubr
     return Rubric(score=score, level=level_for(score), factors=factors)
 
 
-def is_imminent(row: VehicleRow) -> bool:
-    """Whether a vehicle may be HIGH (`services.risk.is_imminent` on the row's facts)."""
+def row_ceiling(row: VehicleRow) -> WatchLevel:
+    """Highest level this vehicle may get (`services.risk.level_ceiling` on the row's facts)."""
     closing_now = row.moving and row.closing_last5_m_per_min > 0
-    return risk_is_imminent(
-        row.dist_to_base_m, closing_now, row.heading_vs_base_deg, row.eta_to_base_min
+    return level_ceiling(
+        row.dist_to_base_m,
+        row.speed_last10_ms,
+        closing_now,
+        row.heading_vs_base_deg,
+        row.eta_to_base_min,
+        row.behavior_class,
+        len(row.group_ids) + 1,
     )
 
 
 def gated_level(level: WatchLevel, row: VehicleRow) -> WatchLevel:
-    """`level`, capped at MEDIUM unless the vehicle is imminent."""
-    return "MEDIUM" if level == "HIGH" and not row.imminent else level
+    """`level` limited to the vehicle's ceiling (`row.max_level`)."""
+    return min(level, row.max_level, key=WATCH_LEVELS.index)
 
 
 def rubric_watch_level(row: VehicleRow) -> WatchLevel:
-    """The rubric's level on the watch scale (CRITICAL -> HIGH), gated by imminence."""
+    """The rubric's level on the watch scale (CRITICAL -> HIGH), limited by the ceiling."""
     return gated_level(WATCH_LEVEL_OF[row.rubric.level], row)
 
 
@@ -209,9 +201,12 @@ def vehicle_row(
     notes_count: int,
     lang: Lang,
     vehicle_type: str | None = None,
+    group: list[str] | None = None,
 ) -> VehicleRow:
     """All facts about one vehicle at a tick. `track` must end exactly at `tick_min`."""
     motion = motion_profile(track, tick_min, base, zones, stop_speed_ms, zone_radius_m)
+    behavior = behavior_class(track.points, base)
+    others = [t for t in group or [] if t != track.track_id]
     here = track.points[-1].position
     sector = sector_of(here, zones)
     last_step_m = haversine_m(track.points[-2].position, here) if len(track.points) > 1 else 0.0
@@ -248,15 +243,15 @@ def vehicle_row(
         eta_to_base_min=motion.eta_to_base_min if moving else None,
         current_stop_min=0 if moving else current_stop_min(motion, tick_min),
         long_stops_within_6km=len(long_stops),
-        behavior_class=behavior_class(track.points, base),
-        rubric=track_rubric(motion, vehicle_type),
-        imminent=False,
+        behavior_class=behavior,
+        rubric=track_rubric(motion, vehicle_type, behavior, len(others) + 1),
+        group_ids=others,
         registry_level=registry_level,
         pending_level=pending_level,
         notes_count=notes_count,
         one_liner="",
     )
-    row = row.model_copy(update={"imminent": is_imminent(row)})
+    row = row.model_copy(update={"max_level": row_ceiling(row)})
     return row.model_copy(update={"one_liner": one_liner(row, lang)})
 
 

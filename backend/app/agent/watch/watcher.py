@@ -26,7 +26,7 @@ from app.domain.watch import (
 )
 from app.services.watch import gated_level, rubric_watch_level
 
-PROMPT = "watcher_v4"
+PROMPT = "watcher_v7"
 MAX_TOKENS = 12000
 LANGUAGE_NAMES = {"tr": "Turkish", "en": "English"}
 
@@ -166,9 +166,9 @@ def _checker(ctx: t.WatchContext, inp: WatcherInput) -> Any:
 
 
 def enforce_rules(report: WatcherReport, rows: list[VehicleRow]) -> tuple[WatcherReport, list[str]]:
-    """Clamp levels: HIGH only for imminent vehicles; within one level of the (gated) rubric;
-    never below the registry level, except that a HIGH that is no longer imminent may drop to
-    MEDIUM (de-escalation)."""
+    """Clamp levels: never above the vehicle's ceiling (`row.max_level`); within one level of the
+    (limited) rubric; never below the registry level, except down to the ceiling when the vehicle
+    no longer justifies its level (de-escalation)."""
     by_id = {r.track_id: r for r in rows}
     warnings: list[str] = []
     fixed: list[VehicleVerdict] = []

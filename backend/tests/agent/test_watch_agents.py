@@ -22,9 +22,9 @@ from tests.agent.fake_llm import FakeLLM, rubric_responder, submit
 TICK = 14 * 60 + 5
 
 
-def imminent(ctx: WatchContext, tid: str) -> None:
-    """Mark a vehicle as imminent (HIGH-eligible) for tests that need a HIGH."""
-    ctx.rows[tid] = ctx.rows[tid].model_copy(update={"imminent": True})
+def allow_high(ctx: WatchContext, tid: str) -> None:
+    """Let a vehicle reach HIGH (its ceiling) for tests that need a HIGH."""
+    ctx.rows[tid] = ctx.rows[tid].model_copy(update={"max_level": "HIGH"})
 
 
 def make_ctx(repo: Repository, settings: Settings) -> WatchContext:
@@ -133,7 +133,7 @@ async def test_watcher_levels_are_clamped_to_one_step_from_rubric(
     ctx.rows[tid] = row.model_copy(
         update={
             "rubric": row.rubric.model_copy(update={"level": "HIGH", "score": 60}),
-            "imminent": True,
+            "max_level": "HIGH",
         }
     )
     llm = FakeLLM([submit("submit_watch_report", good_report(ctx, "LOW"))])
@@ -183,7 +183,7 @@ async def test_supervisor_informs_operator_and_has_no_trackers_by_default(
     golden_repo: Repository, golden_settings: Settings
 ) -> None:
     ctx = make_ctx(golden_repo, golden_settings)
-    imminent(ctx, "T0122")
+    allow_high(ctx, "T0122")
     llm = FakeLLM(
         [
             submit("dispatch_tracker", {"track_id": "T0122"}),
@@ -222,7 +222,7 @@ async def test_tracker_dispatch_requires_high_when_trackers_are_enabled(
     golden_repo: Repository, golden_settings: Settings
 ) -> None:
     ctx = make_ctx(golden_repo, golden_settings.model_copy(update={"trackers_enabled": True}))
-    imminent(ctx, "T0122")
+    allow_high(ctx, "T0122")
     suspicion = {
         "hypothesis": "h",
         "evidence_ids": ["TRK-T0122"],
@@ -371,35 +371,36 @@ async def test_runner_emits_agent_traces_with_every_step(
         assert "reasoning" in tr.steps[0]
 
 
-async def test_high_is_capped_at_medium_unless_imminent(
+async def test_levels_never_exceed_the_vehicle_ceiling(
     golden_repo: Repository, golden_settings: Settings
 ) -> None:
     ctx = make_ctx(golden_repo, golden_settings)
-    assert not ctx.rows["T0122"].imminent  # 4.1 km out, ETA 11.6 min at 14:05
+    # 3.5 km out, closing at 6 m/s, ETA 8.4 min: a fast approach, capped at MEDIUM
+    assert ctx.rows["T0122"].max_level == "MEDIUM"
     llm = FakeLLM([submit("submit_watch_report", good_report(ctx, "HIGH"))])
     out = await run_watcher(llm, ctx, watcher_input(ctx))
-    levels = {v.track_id: v.level for v in out.report.vehicles}
-    assert all(levels[tid] != "HIGH" for tid, r in ctx.rows.items() if not r.imminent)
+    order = ["LOW", "MEDIUM", "HIGH"]
+    for v in out.report.vehicles:
+        assert order.index(v.level) <= order.index(ctx.rows[v.track_id].max_level)
 
 
-async def test_supervisor_cannot_set_high_on_a_vehicle_that_is_not_imminent(
+async def test_supervisor_cannot_set_a_level_above_the_ceiling(
     golden_repo: Repository, golden_settings: Settings
 ) -> None:
     ctx = make_ctx(golden_repo, golden_settings)
     set_high = {"track_id": "T0122", "level": "HIGH", "reason": "r", "evidence_ids": ["TRK-T0122"]}
     llm = FakeLLM([submit("set_level", set_high), decision()])
     out = await run_supervisor(llm, ctx, supervisor_input())
-    assert "is not imminent" in llm.requests[1][-1]["content"]
+    assert "may be at most MEDIUM" in llm.requests[1][-1]["content"]
     assert ctx.registry.get("T0122").level == "LOW" and not out.level_changes
 
 
-async def test_high_that_is_no_longer_imminent_may_drop_to_medium(
+async def test_level_drops_to_the_ceiling_when_no_longer_justified(
     golden_repo: Repository, golden_settings: Settings
 ) -> None:
     ctx = make_ctx(golden_repo, golden_settings)
     tid = "T0122"
     ctx.rows[tid] = ctx.rows[tid].model_copy(update={"registry_level": "HIGH"})
-    report = good_report(ctx, "MEDIUM")
-    llm = FakeLLM([submit("submit_watch_report", report)])
+    llm = FakeLLM([submit("submit_watch_report", good_report(ctx, "MEDIUM"))])
     out = await run_watcher(llm, ctx, watcher_input(ctx))
-    assert {v.track_id: v.level for v in out.report.vehicles}[tid] == "MEDIUM"
+    assert {v.track_id: v.level for v in out.report.vehicles}[tid] == ctx.rows[tid].max_level

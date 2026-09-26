@@ -43,6 +43,7 @@ from app.domain.watch import (
     WatcherReportEvent,
 )
 from app.services import watch as watch_svc
+from app.services.behavior import moving_groups
 from app.services.detection import Detector
 from app.services.reports import extract_claim
 from app.services.tracks import tracks_at
@@ -240,6 +241,7 @@ class WatchRunner:
 
     def _rows(self, minute: int) -> list[VehicleRow]:
         zones, base = self.repo.scene.zones, self.repo.scene.base.position
+        groups = moving_groups(list(self.repo.tracks.values()), minute)
         rows: list[VehicleRow] = []
         for tid, track in self.repo.tracks.items():
             upto = watch_svc.track_until(track, minute)
@@ -260,6 +262,7 @@ class WatchRunner:
                     notes_count=len(entry.notes),
                     lang=self.settings.brief_language,
                     vehicle_type=entry.vehicle_type,
+                    group=groups.get(tid),
                 )
             )
         return rows
@@ -331,8 +334,8 @@ class WatchRunner:
     def _apply_watcher(self, tick: str, inp: WatcherInput, outcome: WatcherOutcome) -> None:
         by = f"watcher:{inp.watcher_id}"
         for v in outcome.report.vehicles:
-            # enforce_rules only lets a verdict go below the registry for a HIGH that is no
-            # longer imminent, so a lower verdict here is an allowed de-escalation.
+            # enforce_rules only lets a verdict go below the registry down to the vehicle's
+            # ceiling, so a lower verdict here is an allowed de-escalation.
             if level_index(v.level) < level_index(self.registry.get(v.track_id).level):
                 change = self.registry.lower(v.track_id, v.level, by, v.reason)
             else:

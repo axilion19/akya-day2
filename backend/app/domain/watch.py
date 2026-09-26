@@ -56,8 +56,10 @@ class VehicleRow(DomainModel):
     long_stops_within_6km: int
     behavior_class: BehaviorClass
     rubric: Rubric
-    # Code gate (services/watch.is_imminent): only imminent vehicles may be HIGH.
-    imminent: bool = False
+    # Highest level this vehicle may get, computed by code (services/risk.level_ceiling).
+    max_level: WatchLevel = "HIGH"
+    # Other vehicles moving together with this one (services/behavior.moving_groups).
+    group_ids: list[str] = Field(default_factory=list)
     registry_level: WatchLevel
     pending_level: WatchLevel | None
     notes_count: int

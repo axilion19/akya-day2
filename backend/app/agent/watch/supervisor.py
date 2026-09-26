@@ -33,7 +33,7 @@ from app.domain.watch import (
     WatchLevel,
 )
 
-PROMPT = "supervisor_v4"
+PROMPT = "supervisor_v7"
 MAX_TOKENS = 16000
 NO_TRACKERS = (
     "3. No trackers or field units are available in this exercise: you cannot send anyone. "
@@ -97,10 +97,11 @@ class _Effects:
         if level not in WATCH_LEVELS:
             raise BoardError(f"level must be one of {list(WATCH_LEVELS)}")
         row = self.ctx.rows.get(tid)
-        if level == "HIGH" and row is not None and not row.imminent:
+        if row is not None and WATCH_LEVELS.index(level) > WATCH_LEVELS.index(row.max_level):
             raise BoardError(
-                f"{tid} is not imminent (HIGH needs a vehicle closing on the base now within "
-                "2 km or 8 min, or within 1 km of it); use MEDIUM or alert_operator instead"
+                f"{tid} may be at most {row.max_level}: HIGH is for vehicles looping around or "
+                "orbiting the base, within 1 km of it, or approaching very fast and close "
+                "(1.5 km or 5 min); a normal approach is LOW"
             )
         reason = str(args.get("reason") or "").strip()
         if not reason:
