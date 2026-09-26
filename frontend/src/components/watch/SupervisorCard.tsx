@@ -52,8 +52,6 @@ export function SupervisorCard({ tick, decision, alerts, history, contradicted, 
         {d && progress > 0 && <AgentText text={d.situation_summary} max={120} progress={progress} className="text-sm" />}
       </section>
 
-      {chat.length > 0 && <OperatorChat items={chat} />}
-
       {alertProgress > 0 &&
         alerts.map((a) => (
           <AlertBox key={a.alert_id} alert={a} progress={alertProgress} />
@@ -61,6 +59,8 @@ export function SupervisorCard({ tick, decision, alerts, history, contradicted, 
       {progress >= 1 && alertProgress >= 1 && alerts.length === 0 && (
         <p className="rounded-lg border border-dashed bg-card p-3 text-xs text-muted-foreground">{w.noAlerts}</p>
       )}
+
+      {chat.length > 0 && <OperatorChat items={chat} />}
 
       {progress > 0 && contradicted.length > 0 && (
         <section className="flex flex-col gap-1.5">

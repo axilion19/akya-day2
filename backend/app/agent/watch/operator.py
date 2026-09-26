@@ -24,7 +24,7 @@ from app.agent.watch.watcher import LANGUAGE_NAMES
 from app.domain.watch import ExpectedVehicle, GeneratedBy, SupervisorAction
 from app.services.watch import resolve_sector
 
-PROMPT = "operator_chat_v1"
+PROMPT = "operator_chat_v2"
 MAX_TOKENS = 6000
 _HHMM = re.compile(r"^\d{2}:\d{2}$")
 
@@ -92,7 +92,7 @@ class _Effects:
         self.actions.append(
             SupervisorAction(tool="create_watcher", ok=True, summary=f"{wid} · {sector}: {reason}")
         )
-        return {"watcher_id": wid, "sector": sector, "checks": "every tick from the next tick"}
+        return {"watcher_id": wid, "sector": sector, "checks": "every tick, starting this tick"}
 
     def register_expected_vehicle(self, args: dict[str, Any]) -> dict[str, Any]:
         sector = self._sector(args.get("sector"))

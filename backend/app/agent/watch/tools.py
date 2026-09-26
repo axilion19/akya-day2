@@ -247,7 +247,7 @@ SUBMIT_SUPERVISOR_DECISION = _fn(
 
 CREATE_WATCHER = _fn(
     "create_watcher",
-    "Create a new watcher dedicated to one sector: it checks that sector every tick from the next "
+    "Create a new watcher dedicated to one sector: it checks that sector every tick from this "
     "tick on, and the other watchers stop checking it.",
     {
         "sector": {"type": "string", "description": "Sector name exactly as in <sectors>."},
