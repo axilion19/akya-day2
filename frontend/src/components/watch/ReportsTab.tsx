@@ -1,6 +1,6 @@
 import type { FieldReport } from '@/api/types'
 import { t } from '@/i18n'
-import type { JudgedReport } from '@/lib/watchDemo'
+import { type JudgedReport, judgeLabel } from '@/lib/watchDemo'
 import { ReportRef } from './ReportRef'
 
 interface Props {
@@ -38,7 +38,7 @@ export function ReportsTab({ judged, texts }: Props) {
           report={j.report}
           judgment={j.judgment}
           texts={texts}
-          meta={`${j.by === 'supervisor' ? w.report.supervisor : j.by} · ${j.tick}`}
+          meta={`${judgeLabel(j.by, w.report.supervisor)} · ${j.tick}`}
         />
       ))}
     </div>

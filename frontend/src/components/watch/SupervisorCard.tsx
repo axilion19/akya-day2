@@ -4,7 +4,7 @@ import { RiskBadge } from '@/components/analysis/RiskBadge'
 import { t } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { FieldReport } from '@/api/types'
-import type { JudgedReport } from '@/lib/watchDemo'
+import { type JudgedReport, judgeLabel } from '@/lib/watchDemo'
 import { AgentText, LinkedIds } from './AgentText'
 import { ReportRef } from './ReportRef'
 
@@ -67,7 +67,7 @@ export function SupervisorCard({ tick, decision, alerts, history, contradicted, 
               report={j.report}
               judgment={j.judgment}
               texts={texts}
-              meta={`${j.by === 'supervisor' ? w.report.supervisor : j.by} · ${j.tick}`}
+              meta={`${judgeLabel(j.by, w.report.supervisor)} · ${j.tick}`}
             />
           ))}
         </section>

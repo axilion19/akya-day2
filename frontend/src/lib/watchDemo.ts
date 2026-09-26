@@ -130,15 +130,33 @@ export function tickJudgments(tv: TickView, done?: Set<string>, supervisorDone =
   return out
 }
 
+/** One entry per report: the last judgment wins (the supervisor comes after the watchers) and
+ *  `by` names every agent that judged it, e.g. "W1 → supervisor". */
+export function latestPerReport(items: JudgedReport[]): JudgedReport[] {
+  const out = new Map<string, JudgedReport>()
+  for (const j of items) {
+    const prev = out.get(j.report.report_id)
+    out.set(j.report.report_id, prev && prev.by !== j.by ? { ...j, by: `${prev.by} → ${j.by}` } : j)
+  }
+  return [...out.values()]
+}
+
 /** The latest judgment of every report up to the playhead, newest report first. */
 export function reportJudgments(model: DemoModel, head: Playhead, done: Set<string>, supervisorDone: boolean): JudgedReport[] {
   const latest = new Map<string, JudgedReport>()
   model.ticks.slice(0, head.index + 1).forEach((tv, i) => {
     const live = i === head.index
-    for (const j of tickJudgments(tv, live ? done : undefined, !live || supervisorDone)) latest.set(j.report.report_id, j)
+    for (const j of latestPerReport(tickJudgments(tv, live ? done : undefined, !live || supervisorDone))) latest.set(j.report.report_id, j)
   })
   return [...latest.values()].sort((a, b) => b.report.time_min - a.report.time_min || b.report.report_id.localeCompare(a.report.report_id))
 }
+
+/** Display name of the agents in `JudgedReport.by`. */
+export const judgeLabel = (by: string, supervisor: string): string =>
+  by
+    .split(' → ')
+    .map((name) => (name === 'supervisor' ? supervisor : name))
+    .join(' → ')
 
 /** Every report text the recording carries up to a tick (judged reports and their conflicts). */
 export function reportTexts(model: DemoModel, index: number): Map<string, FieldReport> {
