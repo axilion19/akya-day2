@@ -1,10 +1,9 @@
-import { ExternalLink, X } from 'lucide-react'
-import { Link } from 'react-router'
+import { X } from 'lucide-react'
 import type { ImageMeta, MapTrack, MotionProfile } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { t } from '@/i18n'
-import { formatKm, formatSpeed } from '@/lib/format'
+import { formatKm, formatSpeed, placeName } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -62,23 +61,14 @@ export function TrackDetail({ track, frame, at, motion, isPending, isError, onCl
             <Row label={tt.path} value={formatKm(motion.path_km * 1000)} />
             <Row label={tt.stops} value={tt.stopsValue(motion.stops.length, stopMin)} />
             {motion.eta_to_base_min != null && <Row label={tt.eta} value={tt.etaValue(motion.eta_to_base_min)} className="text-orange-700" />}
-            {motion.zones_visited.length > 0 && <Row label={tt.zones} value={motion.zones_visited.join(', ')} />}
+            {motion.zones_visited.length > 0 && <Row label={tt.zones} value={motion.zones_visited.map(placeName).join(', ')} />}
           </>
         )}
       </dl>
       {frame && (
-        <Link
-          to={`/analysis/${frame.image_id}`}
-          className="mt-3 flex items-center justify-between rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-1.5 text-xs text-sky-700 transition-colors hover:bg-sky-500/20"
-        >
-          <span>
-            {tt.frame}: <span className="font-mono">{frame.image_id}</span> · {frame.capture_time}
-          </span>
-          <span className="flex items-center gap-1">
-            {tt.openAnalysis}
-            <ExternalLink aria-hidden className="size-3" />
-          </span>
-        </Link>
+        <p className="mt-3 rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-1.5 text-xs text-sky-700">
+          {tt.frame}: <span className="font-mono">{frame.image_id}</span> · {frame.capture_time}
+        </p>
       )}
     </aside>
   )

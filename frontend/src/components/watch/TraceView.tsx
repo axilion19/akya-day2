@@ -53,7 +53,7 @@ export function TraceView({ trace }: { trace: Trace }) {
               {reasoning && (
                 <details open={i === 0}>
                   <summary className="cursor-pointer text-muted-foreground">{w.reasoning}</summary>
-                  <p className="mt-1 max-h-56 overflow-auto border-l-2 border-cyan-200 pl-2 whitespace-pre-wrap text-muted-foreground italic">
+                  <p className="mt-1 max-h-56 overflow-auto border-l-2 border-cyan-500 pl-2 whitespace-pre-wrap text-muted-foreground italic">
                     <LinkedIds text={reasoning} />
                   </p>
                 </details>

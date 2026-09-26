@@ -1,11 +1,11 @@
 import { Outlet } from 'react-router'
-import { TopBar } from './TopBar'
+import { Sidebar } from './Sidebar'
 
 export function AppShell() {
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      <TopBar />
-      <main className="min-h-0 flex-1 overflow-auto">
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
+      <main className="min-w-0 flex-1 overflow-auto">
         <Outlet />
       </main>
     </div>

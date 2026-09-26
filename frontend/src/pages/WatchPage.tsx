@@ -77,7 +77,8 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
   const first = model.ticks[0]?.minute ?? 0
   const last = model.ticks[model.ticks.length - 1]?.minute ?? first
   const jump = initialTick !== null ? model.ticks[Math.min(initialTick, model.ticks.length - 1)]?.minute : undefined
-  const clock = useClock(first - TICK_MIN, last, initialMinute ?? jump ?? first - TICK_MIN, 15)
+  // 1x = one tick (5 simulated minutes) per 20 s, so the streamed text stays readable.
+  const clock = useClock(first - TICK_MIN, last, { initialMinute: initialMinute ?? jump ?? first - TICK_MIN, baseMinPerSec: 0.25 })
   const [selected, setSelected] = useState<string | null>(initialVehicle)
   const navigate = useNavigate()
 
@@ -198,8 +199,9 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
           playing={clock.playing}
           speed={clock.speed}
           ticks={model.ticks.map((tv) => ({ minute: tv.minute, kind: 'frame' as const }))}
+          activity={[]}
           onToggle={clock.toggle}
-          onSpeed={clock.setSpeed}
+          onSpeed={clock.cycleSpeed}
           onSeek={clock.seek}
         />
       </div>

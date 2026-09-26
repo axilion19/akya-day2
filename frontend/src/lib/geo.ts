@@ -11,6 +11,14 @@ export function toLocalM(origin: LatLon, p: LatLon): { x: number; y: number } {
   }
 }
 
+/** Inverse of `toLocalM`: the lat/lon at local east/north meters from `origin`. */
+export function fromLocalM(origin: LatLon, x: number, y: number): LatLon {
+  return {
+    lat: origin.lat + y / M_PER_DEG,
+    lon: origin.lon + x / (M_PER_DEG * Math.cos((origin.lat * Math.PI) / 180)),
+  }
+}
+
 export interface Fit {
   project: (p: { x: number; y: number }) => { x: number; y: number }
 }

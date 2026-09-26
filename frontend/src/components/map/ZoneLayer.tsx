@@ -1,5 +1,6 @@
 import type { LatLon } from '@/api/types'
 import type { Pt } from '@/lib/fieldMap'
+import { placeName } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 export interface ZoneMark {
@@ -26,7 +27,7 @@ export function ZoneLayer({ zones, mpp, activeZone, flashZone, onSelect }: Props
         const flash = z.name === flashZone
         return (
           <g key={z.name} transform={`translate(${z.p.x} ${z.p.y})`} className="group cursor-pointer" onClick={() => onSelect(z.name)}>
-            <title>{z.name}</title>
+            <title>{placeName(z.name)}</title>
             {/* Larger transparent hit area than the dot itself. */}
             <circle r={14 * mpp} fill="transparent" />
             {flash && (

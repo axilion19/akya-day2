@@ -1,7 +1,7 @@
 // Turkish step narration built from API data (formatting only; all numbers come from the API).
 import type { Analysis, MotionProfile, StepName, VehicleRisk } from '@/api/types'
 import { t } from '@/i18n'
-import { formatCoord, formatKm, formatMeters, formatPercent, formatSpeed } from './format'
+import { formatCoord, formatKm, formatMeters, formatPercent, formatSpeed, placeName } from './format'
 
 export interface Narrative {
   headline: string
@@ -60,7 +60,7 @@ export function buildNarrative(a: Analysis, step: StepName): Narrative {
               ? `${d.id} → ${formatCoord(d.position.lat)}, ${formatCoord(d.position.lon)} · üsse ${formatKm(d.distance_to_base_m)}`
               : d.id,
           ),
-          n.frameSize(w.toFixed(0), h.toFixed(0), image?.zone ?? '—'),
+          n.frameSize(w.toFixed(0), h.toFixed(0), image?.zone ? placeName(image.zone) : '—'),
         ],
       }
     }

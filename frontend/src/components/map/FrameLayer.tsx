@@ -14,33 +14,37 @@ interface Props {
   frames: FrameMark[]
   minute: number
   mpp: number
-  onOpen: (id: string) => void
+  selectedId: string | null
+  onSelect: (id: string) => void
 }
 
-/** Minutes around a capture time during which the frame is shown as "being taken". */
+/** Minutes after a capture time during which the frame is shown as just taken. */
 const LIVE_MIN = 5
-/** Simulated minutes the "image taken" popup stays up after the capture. */
+/** Simulated minutes the \"image taken\" popup stays up after the capture. */
 const POPUP_MIN = 3
 
-/** Drone frame footprints; the one being captured glows, past ones stay dim. Click = analysis. */
-export function FrameLayer({ frames, minute, mpp, onOpen }: Props) {
+/** Drone frame footprints, shown from their capture time on: that is when the frame's tracks end
+ *  inside it (tracks.csv stops at capture). A fresh frame glows, older ones stay dim, the selected
+ *  one is cyan. Click = detail card. */
+export function FrameLayer({ frames, minute, mpp, selectedId, onSelect }: Props) {
   return (
     <g>
       {frames.map((f) => {
-        const live = Math.abs(minute - f.captureMin) <= LIVE_MIN
-        const past = !live && f.captureMin < minute
-        const s = (live ? 6 : 4) * mpp
+        if (f.captureMin > minute) return null
+        const live = minute - f.captureMin <= LIVE_MIN
+        const selected = f.id === selectedId
+        const s = (live || selected ? 6 : 4) * mpp
         return (
-          <g key={f.id} className="group cursor-pointer" onClick={() => onOpen(f.id)}>
+          <g key={f.id} className="group cursor-pointer" onClick={() => onSelect(f.id)}>
             <title>{f.captureTime}</title>
             <polygon
               points={toPoints(f.corners)}
               className={
-                live
-                  ? 'fill-sky-400/30 stroke-sky-600'
-                  : past
-                    ? 'fill-sky-400/10 stroke-sky-600/50'
-                    : 'fill-none stroke-sky-600/25'
+                selected
+                  ? 'fill-cyan-400/25 stroke-cyan-600'
+                  : live
+                    ? 'fill-sky-400/30 stroke-sky-600'
+                    : 'fill-sky-400/10 stroke-sky-600/50'
               }
               vectorEffect="non-scaling-stroke"
             />
@@ -52,7 +56,7 @@ export function FrameLayer({ frames, minute, mpp, onOpen }: Props) {
               height={2 * s}
               className={cn(
                 'stroke-sky-600 group-hover:fill-sky-700',
-                live ? 'fill-sky-700' : past ? 'fill-sky-500/40' : 'fill-transparent opacity-50',
+                selected ? 'fill-cyan-700 stroke-cyan-200' : live ? 'fill-sky-700' : 'fill-sky-500/40',
               )}
               vectorEffect="non-scaling-stroke"
             />
@@ -62,7 +66,7 @@ export function FrameLayer({ frames, minute, mpp, onOpen }: Props) {
                 <animate attributeName="opacity" from="1" to="0" dur="1.2s" repeatCount="indefinite" />
               </circle>
             )}
-            {minute >= f.captureMin && minute < f.captureMin + POPUP_MIN && (
+            {minute < f.captureMin + POPUP_MIN && (
               <FramePopup x={f.center.x} y={f.center.y - 12 * mpp} mpp={mpp} text={t.fieldMap.frameTaken(f.captureTime)} />
             )}
           </g>

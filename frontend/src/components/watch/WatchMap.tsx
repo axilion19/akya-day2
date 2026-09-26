@@ -39,7 +39,7 @@ export function WatchMap(props: Props) {
         <rect x={-1e5} y={-1e5} width={2e5} height={2e5} fill="transparent" onClick={() => onSelect(null)} />
         <MapGrid bounds={bounds} />
         <SectorLayer zones={model.zones} checks={checks} />
-        <FrameLayer frames={frames} minute={minute} mpp={mpp} onOpen={onOpenFrame} />
+        <FrameLayer frames={frames} minute={minute} mpp={mpp} selectedId={null} onSelect={onOpenFrame} />
         <VehicleLayer tracks={model.tracks} minute={minute} mpp={mpp} levels={levels} focus={focus} selectedId={selectedId} onSelect={onSelect} />
         <BaseMarker position={scene.base.position} mpp={mpp} />
       </svg>

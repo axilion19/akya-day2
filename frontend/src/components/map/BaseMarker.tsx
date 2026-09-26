@@ -20,7 +20,7 @@ export function BaseMarker({ position, mpp }: Props) {
         className="fill-emerald-400 stroke-white"
         vectorEffect="non-scaling-stroke"
       />
-      <text y={30 * mpp} textAnchor="middle" fontSize={9 * mpp} className="fill-emerald-500/80 font-mono">
+      <text y={30 * mpp} textAnchor="middle" fontSize={9 * mpp} className="fill-emerald-600/80 font-mono">
         {`${formatCoord(position.lat)}, ${formatCoord(position.lon)}`}
       </text>
     </g>

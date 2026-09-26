@@ -1,24 +1,26 @@
 import { Maximize } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import type { ImageMeta, MapReport, MapTrack, Scene } from '@/api/types'
+import type { ImageMeta, LatLon, MapReport, MapTrack, Scene } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { useClock } from '@/hooks/useClock'
 import { useTrackMotion } from '@/hooks/useFieldMap'
 import { useFieldMapModel } from '@/hooks/useFieldMapModel'
 import { useMapViewport } from '@/hooks/useMapViewport'
 import { t } from '@/i18n'
-import { hhmm } from '@/lib/fieldMap'
+import { hhmm, unproject } from '@/lib/fieldMap'
+import { cn } from '@/lib/utils'
 import { BaseMarker } from './BaseMarker'
+import { FrameDetail } from './FrameDetail'
 import { FrameLayer } from './FrameLayer'
 import { MapGrid } from './MapGrid'
-import { MapLegend } from './MapLegend'
+import { type LegendKey, MapLegend } from './MapLegend'
 import { ReportFeed } from './ReportFeed'
 import { ReportLayer } from './ReportLayer'
 import { TimeBar } from './TimeBar'
 import { TrackDetail } from './TrackDetail'
 import { TrackLayer } from './TrackLayer'
-import { type LayerKey, type SourceKey, ZonePanel } from './ZonePanel'
+import { ZonePanel } from './ZonePanel'
 import { ZoneLayer } from './ZoneLayer'
 
 interface Props {
@@ -28,7 +30,7 @@ interface Props {
   reports: MapReport[]
 }
 
-type Selection = { kind: 'track' | 'report'; id: string } | null
+type Selection = { kind: 'track' | 'report' | 'frame'; id: string } | null
 
 /** Field map: every track, frame and report of the day, driven by one simulated clock. */
 export function FieldMapView({ scene, images, tracks, reports }: Props) {
@@ -36,18 +38,23 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
   const clock = useClock(model.start, model.end)
   const { ref: svgRef, viewBox, bounds, mpp, flyTo, fit, handlers } = useMapViewport(model.fitRadiusM)
   const navigate = useNavigate()
-  const [layers, setLayers] = useState<Record<LayerKey, boolean>>({ tracks: true, frames: true, reports: true })
-  const [sources, setSources] = useState<Record<SourceKey, boolean>>({ official: true, third_party: true })
+  const [visible, setVisible] = useState<Record<LegendKey, boolean>>({ zones: true, tracks: true, frames: true, official: true, third_party: true })
   const [zone, setZone] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection>(null)
+  const [cursor, setCursor] = useState<LatLon | null>(null)
+  const [allTracks, setAllTracks] = useState(false)
+  const [zonesOpen, setZonesOpen] = useState(true)
+  const [feedOpen, setFeedOpen] = useState(true)
+  // Bottom controls stop at the report feed when it is open, else run to the edge.
+  const rightInset = feedOpen ? '21.5rem' : '0.75rem'
 
   const minute = clock.minute
   const inZone = (z: string | null) => zone === null || z === zone
-  const sourceOn = (s: string) => sources[s as SourceKey] ?? true
+  const sourceOn = (s: string) => (s === 'official' || s === 'third_party' ? visible[s] : true)
 
-  const visibleTracks = layers.tracks ? model.tracks.filter((tr) => inZone(tr.zone)) : []
-  const visibleFrames = layers.frames ? model.frames.filter((f) => inZone(f.zone)) : []
-  const visiblePins = layers.reports ? model.reports.filter((r) => sourceOn(r.source) && inZone(r.zone)) : []
+  const visibleTracks = visible.tracks ? model.tracks.filter((tr) => inZone(tr.zone)) : []
+  const visibleFrames = visible.frames ? model.frames.filter((f) => inZone(f.zone)) : []
+  const visiblePins = model.reports.filter((r) => sourceOn(r.source) && inZone(r.zone))
   const feed = reports.filter((r) => r.time_min <= minute && sourceOn(r.source) && inZone(r.zone ?? null)).reverse()
 
   const counts: Record<string, { tracks: number; reports: number }> = {}
@@ -63,6 +70,9 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
   const activeTracks = model.tracks.filter((tr) => tr.startMin <= minute && minute <= tr.endMin).length
 
   const selectedTrack = selection?.kind === 'track' ? tracks.find((tr) => tr.track_id === selection.id) : undefined
+  // A frame is not on the map before its capture time, so neither is its card.
+  const selectedFrame = selection?.kind === 'frame' ? model.imageById.get(selection.id) : undefined
+  const frameShown = selectedFrame && selectedFrame.capture_min <= minute ? selectedFrame : undefined
   const selectedReport = selection?.kind === 'report' ? reports.find((r) => r.report_id === selection.id) : undefined
   const motionAt = hhmm(Math.floor(minute / 5) * 5)
   const motion = useTrackMotion(selectedTrack?.track_id ?? null, motionAt)
@@ -81,23 +91,43 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
     if (p) flyTo(p, Math.min(4000, model.fitRadiusM))
   }
 
+  // Screen → SVG meters via the element's CTM, then back to lat/lon for the hover readout.
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    handlers.onPointerMove(e)
+    const ctm = e.currentTarget.getScreenCTM()
+    if (!ctm) return
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse())
+    setCursor(unproject(model.origin, { x: p.x, y: p.y }))
+  }
+
   return (
     <div className="relative h-full overflow-hidden bg-map">
-      <svg ref={svgRef} viewBox={viewBox} className="absolute inset-0 size-full cursor-grab touch-none select-none active:cursor-grabbing" {...handlers}>
+      <svg ref={svgRef} viewBox={viewBox} className="absolute inset-0 size-full cursor-grab touch-none select-none active:cursor-grabbing"
+        {...handlers}
+        onPointerMove={onPointerMove}
+        onPointerLeave={() => setCursor(null)}
+      >
         <rect x={-1e5} y={-1e5} width={2e5} height={2e5} fill="transparent" onClick={() => setSelection(null)} />
         <MapGrid bounds={bounds} />
         <ZoneLayer
-          zones={model.zones}
+          zones={visible.zones ? model.zones : []}
           mpp={mpp}
           activeZone={zone}
           flashZone={selectedReport && !selectedReport.location ? (selectedReport.zone ?? null) : null}
           onSelect={(z) => selectZone(zone === z ? null : z)}
         />
-        <FrameLayer frames={visibleFrames} minute={minute} mpp={mpp} onOpen={(id) => void navigate(`/analysis/${id}`)} />
+        <FrameLayer
+          frames={visibleFrames}
+          minute={minute}
+          mpp={mpp}
+          selectedId={frameShown?.image_id ?? null}
+          onSelect={(id) => setSelection({ kind: 'frame', id })}
+        />
         <TrackLayer
           tracks={visibleTracks}
           minute={minute}
           mpp={mpp}
+          showAll={allTracks}
           selectedId={selectedTrack?.track_id ?? null}
           onSelect={(id) => setSelection({ kind: 'track', id })}
         />
@@ -111,38 +141,39 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
         <BaseMarker position={scene.base.position} mpp={mpp} />
       </svg>
 
-      <div className="absolute top-3 bottom-[5.5rem] left-3 flex flex-col justify-between gap-3">
-        <div className="flex flex-col gap-3">
-          <div className="pointer-events-none flex items-baseline gap-3 self-start rounded-lg border bg-card/90 px-4 py-1.5 backdrop-blur">
-            <span className="font-mono text-3xl font-semibold tracking-wider text-foreground" aria-live="off">
-              {hhmm(minute)}
-            </span>
-            <span className="font-mono text-[11px] text-muted-foreground">
-              <span className="text-emerald-700">{t.fieldMap.activeTracks(activeTracks)}</span> · <span className="text-sky-700">{t.fieldMap.reportsSoFar(feed.length)}</span>
-            </span>
-          </div>
-          <ZonePanel
-            zones={scene.zones.map((z) => z.name)}
-            activeZone={zone}
-            counts={counts}
-            onZone={selectZone}
-            layers={layers}
-            onLayer={(k) => setLayers((l) => ({ ...l, [k]: !l[k] }))}
-            sources={sources}
-            onSource={(k) => setSources((s) => ({ ...s, [k]: !s[k] }))}
-          />
+      <div className="absolute top-3 bottom-[5.5rem] left-3 flex min-h-0 flex-col gap-3 overflow-y-auto [scrollbar-width:thin]">
+        <div className="pointer-events-none flex items-baseline gap-3 self-start rounded-lg border bg-card/90 px-4 py-1.5 backdrop-blur">
+          <span className="font-mono text-3xl font-semibold tracking-wider text-foreground" aria-live="off">
+            {hhmm(minute)}
+          </span>
+          <span className="font-mono text-[11px] text-muted-foreground">
+            <span className="text-emerald-700">{t.fieldMap.activeTracks(activeTracks)}</span> · <span className="text-sky-700">{t.fieldMap.reportsSoFar(feed.length)}</span>
+          </span>
         </div>
-        <div className="max-w-md">
-          <MapLegend />
+        <ZonePanel
+          zones={scene.zones.map((z) => z.name)}
+          activeZone={zone}
+          counts={counts}
+          onZone={selectZone}
+          open={zonesOpen}
+          onToggle={() => setZonesOpen((o) => !o)}
+        />
+        <div>
+          <MapLegend
+            visible={visible}
+            onToggle={(k) => setVisible((v) => ({ ...v, [k]: !v[k] }))}
+            allTracks={allTracks}
+            onAllTracks={() => setAllTracks((a) => !a)}
+          />
         </div>
       </div>
 
       <div className="absolute top-3 right-3 bottom-3 flex">
-        <ReportFeed reports={feed} minute={minute} selectedId={selectedReport?.report_id ?? null} onSelect={selectReport} />
+        <ReportFeed reports={feed} minute={minute} selectedId={selectedReport?.report_id ?? null} onSelect={selectReport} open={feedOpen} onToggle={() => setFeedOpen((o) => !o)} />
       </div>
 
       {selectedTrack && (
-        <div className="absolute top-3 right-[21.5rem]">
+        <div className={cn('absolute right-[21.5rem]', feedOpen ? 'top-3' : 'top-16')}>
           <TrackDetail
             track={selectedTrack}
             frame={selectedTrack.image_id ? model.imageById.get(selectedTrack.image_id) : undefined}
@@ -155,11 +186,32 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
         </div>
       )}
 
-      <Button size="icon-sm" variant="outline" className="absolute right-[21.5rem] bottom-[5.5rem] bg-card/85" onClick={fit} aria-label={t.fieldMap.fit} title={t.fieldMap.fit}>
+      {frameShown && (
+        <div className={cn('absolute right-[21.5rem]', feedOpen ? 'top-3' : 'top-16')}>
+          <FrameDetail
+            key={frameShown.image_id}
+            frame={frameShown}
+            trackCount={tracks.filter((tr) => tr.image_id === frameShown.image_id).length}
+            onAnalyze={() => void navigate(`/analysis/${frameShown.image_id}`, { state: { from: 'map' } })}
+            onClose={() => setSelection(null)}
+          />
+        </div>
+      )}
+
+      {cursor && (
+        <div style={{ right: `calc(${rightInset} + 2.5rem)` }}
+          className="pointer-events-none absolute bottom-[5.5rem] rounded-md border bg-card/85 px-2.5 py-1 font-mono text-[11px] text-muted-foreground tabular-nums backdrop-blur">
+          {t.fieldMap.cursor.lat} <span className="text-foreground">{cursor.lat.toFixed(6)}</span> · {t.fieldMap.cursor.lon}{' '}
+          <span className="text-foreground">{cursor.lon.toFixed(6)}</span>
+        </div>
+      )}
+
+      <Button size="icon-sm" variant="outline" style={{ right: rightInset }}
+        className="absolute bottom-[5.5rem] bg-card/85" onClick={fit} aria-label={t.fieldMap.fit} title={t.fieldMap.fit}>
         <Maximize />
       </Button>
 
-      <div className="absolute right-[21.5rem] bottom-3 left-3">
+      <div className="absolute bottom-3 left-3" style={{ right: rightInset }}>
         <TimeBar
           start={clock.start}
           end={clock.end}
@@ -167,8 +219,9 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
           playing={clock.playing}
           speed={clock.speed}
           ticks={model.ticks}
+          activity={model.activity}
           onToggle={clock.toggle}
-          onSpeed={clock.setSpeed}
+          onSpeed={clock.cycleSpeed}
           onSeek={clock.seek}
         />
       </div>

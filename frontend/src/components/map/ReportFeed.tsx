@@ -2,8 +2,9 @@ import { MapPin } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import type { MapReport } from '@/api/types'
 import { t } from '@/i18n'
-import { formatCoord } from '@/lib/format'
+import { formatCoord, placeName } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { PanelToggle } from './PanelToggle'
 import { SourceBadge } from './SourceBadge'
 
 interface Props {
@@ -11,12 +12,14 @@ interface Props {
   minute: number
   selectedId: string | null
   onSelect: (report: MapReport) => void
+  open: boolean
+  onToggle: () => void
 }
 
 const FRESH_MIN = 10
 
-/** Right panel: reports received up to the clock time, newest on top. */
-export function ReportFeed({ reports, minute, selectedId, onSelect }: Props) {
+/** Right panel: reports received up to the clock time, newest on top; collapsible to its header. */
+export function ReportFeed({ reports, minute, selectedId, onSelect, open, onToggle }: Props) {
   const fm = t.fieldMap
   const items = useRef(new Map<string, HTMLLIElement>())
 
@@ -25,12 +28,13 @@ export function ReportFeed({ reports, minute, selectedId, onSelect }: Props) {
   }, [selectedId])
 
   return (
-    <section className="flex min-h-0 w-80 flex-col rounded-lg border bg-card/85 backdrop-blur" aria-label={fm.feedTitle}>
-      <header className="flex items-center justify-between border-b px-3 py-2">
+    <section className={cn('flex min-h-0 w-80 flex-col rounded-lg border bg-card/85 backdrop-blur', !open && 'self-start')} aria-label={fm.feedTitle}>
+      <header className={cn('flex items-center justify-between gap-2 px-3 py-2', open && 'border-b')}>
         <h2 className="text-xs font-semibold tracking-widest text-emerald-700">{fm.feedTitle.toLocaleUpperCase('tr-TR')}</h2>
-        <span className="font-mono text-xs text-muted-foreground">{reports.length}</span>
+        <span className="ml-auto font-mono text-xs text-muted-foreground">{reports.length}</span>
+        <PanelToggle open={open} onToggle={onToggle} />
       </header>
-      {reports.length === 0 ? (
+      {!open ? null : reports.length === 0 ? (
         <p className="p-4 text-xs text-muted-foreground">{fm.feedEmpty}</p>
       ) : (
         <ol className="min-h-0 flex-1 overflow-y-auto">
@@ -38,8 +42,8 @@ export function ReportFeed({ reports, minute, selectedId, onSelect }: Props) {
             const fresh = minute - r.time_min <= FRESH_MIN
             const where = r.zone
               ? r.zone_named
-                ? r.zone
-                : fm.nearZone(r.zone)
+                ? placeName(r.zone)
+                : fm.nearZone(placeName(r.zone))
               : r.location
                 ? `${formatCoord(r.location.lat, 4)}, ${formatCoord(r.location.lon, 4)}`
                 : fm.noLocation

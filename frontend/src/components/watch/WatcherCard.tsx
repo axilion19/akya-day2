@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { WatchEventOf } from '@/api/types'
 import { RiskBadge } from '@/components/analysis/RiskBadge'
 import { t } from '@/i18n'
+import { placeName } from '@/lib/format'
 import { AgentText, LinkedIds } from './AgentText'
 import { TraceView } from './TraceView'
 
@@ -30,7 +31,7 @@ export function WatcherCard({ report, frames, trace, progress }: Props) {
   return (
     <section className="flex flex-col gap-2 rounded-lg border bg-card p-3 shadow-xs animate-in fade-in duration-300">
       <header className="flex items-center justify-between gap-2">
-        <h3 className="font-mono text-sm font-semibold text-primary">{w.watcher(report.watcher, sector)}</h3>
+        <h3 className="font-mono text-sm font-semibold text-primary">{w.watcher(report.watcher, placeName(sector))}</h3>
         <span className="text-[11px] text-muted-foreground">
           {progress === 0 ? <span className="animate-pulse">{w.thinking}</span> : `${report.generated_by === 'llm' ? w.llm : w.fallback} · ${w.seconds(llmMs || report.duration_ms)}`}
         </span>

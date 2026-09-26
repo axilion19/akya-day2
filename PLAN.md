@@ -73,7 +73,7 @@ sentinel/
 ├── CLAUDE.md                  # root rules (read first by Claude Code)
 ├── PLAN.md                    # this file
 ├── docs/AGENT_DESIGN.md       # agent architecture, schemas, risk rubric
-├── data/stage2/               # organizer data (gitignored): images/, image_meta.json, zones.json, tracks.csv, field_reports.json
+├── data/stage2/               # organizer data (committed): images/, image_meta.json, zones.json, tracks.csv, field_reports.json
 ├── models/                    # detector weights (gitignored)
 ├── backend/
 │   ├── CLAUDE.md
@@ -130,8 +130,7 @@ Dark "operations center" look. Three screens, one of them carries the demo.
 - Bottom: **Brief card** — risk level, headline, 3–5 sentence justification with clickable evidence chips (`DET-2`, `TRK-T0122`, `REP-07`), uncertainties, recommended operator action (monitor / verify / escalate).
 - Floating: "Ask the analyst" chat drawer.
 
-**C. Reports inspector (`/reports`)**
-- Table of all reports: time, source, raw text, extracted claims, global verdict, linked frames.
+**C. Reports inspector (`/reports`)** — cut: reports are covered by the field map's report feed and the Analysis view's Reports tab.
 
 **Demo safety:** a `Replay` toggle streams a cached analysis with realistic step delays — identical UI, no API dependency.
 
