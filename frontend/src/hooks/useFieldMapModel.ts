@@ -9,6 +9,8 @@ import { project, toSamples } from '@/lib/fieldMap'
 import { toLocalM } from '@/lib/geo'
 
 const ACTIVITY_BIN_MIN = 5
+/** Minutes the field map clock starts before the first track. */
+const LEAD_IN_MIN = 5
 
 export interface ZonedTrack extends TrackMark {
   zone: string | null
@@ -62,7 +64,8 @@ export function useFieldMapModel(scene: Scene, images: ImageMeta[], tracks: MapT
     ]
 
     const times = [...zonedTracks.flatMap((tr) => [tr.startMin, tr.endMin]), ...reports.map((r) => r.time_min)]
-    const start = Math.floor(Math.min(...times) / 10) * 10
+    // The clock opens a few minutes before the first track, so the map starts empty and fills up.
+    const start = Math.min(Math.min(...zonedTracks.map((tr) => tr.startMin)) - LEAD_IN_MIN, ...reports.map((r) => r.time_min))
     const end = Math.ceil(Math.max(...times) / 10) * 10
 
     // Active-track count per bin, for the time bar's activity lane.
