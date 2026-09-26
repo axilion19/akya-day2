@@ -31,7 +31,7 @@ Rationale for mentors: a fixed pipeline gives reproducibility, cost control and 
 |---|---|---|---|
 | 1 | `load_frame` | code | image_id → `ImageMeta` (size, capture time, corners, zone) |
 | 2 | `detect` | model | image → `Detection[]` (label, conf, bbox xywh, center px). Agent threshold `DETECT_CONF_MIN` (default 0.35), classes car/van/truck/bus. Live YOLO (`DETECTOR_KIND=ultralytics`, `DETECTOR_IMGSZ` 960); on load/inference failure the pipeline uses `PrecomputedDetector` and marks the step `warning` |
-| 3 | `georeference` | code | detections + corners → lat/lon per detection (bilinear interpolation over the 4 corners; y grows southward). Also distance & bearing to base |
+| 3 | `georeference` | code | detections + corners → lat/lon per detection (bilinear interpolation over the 4 corners; y grows southward). Also distance & bearing to base. Frames are oblique but treated as bird's-eye per the organizer rule: **no perspective transform** (decided) |
 | 4 | `match_tracks` | code | positions at capture time → `TrackMatch` per detection. Interpolate each track to capture time; cost = haversine distance; Hungarian assignment; gate `MATCH_MAX_M` (default 25 m); keep best & second-best distance as match confidence |
 | 5 | `analyze_motion` | code | matched track → `MotionProfile` |
 | 6 | `assess_reports` | code + LLM | reports near this frame in space/time → `ReportAssessment[]` |
