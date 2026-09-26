@@ -22,6 +22,7 @@ import {
   SCHEDULE,
   TICK_MIN,
   finishedAgents,
+  latestPerReport,
   levelsAt,
   reportJudgments,
   reportTexts,
@@ -106,7 +107,7 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
   const alertLive = tick.alerts.length > 0 && head.elapsed >= SCHEDULE.alert.start && !alertDone
   const judged = reportJudgments(model, head, done, complete)
   const texts = reportTexts(model, head.index)
-  const contradicted = tickJudgments(tick).filter((j) => j.judgment.verdict === 'CONTRADICTED' || j.judgment.deception)
+  const contradicted = latestPerReport(tickJudgments(tick)).filter((j) => j.judgment.verdict === 'CONTRADICTED' || j.judgment.deception)
   const watchersLive = head.elapsed > 0 && !done.has(`watcher:${tick.watchers[tick.watchers.length - 1]?.watcher ?? ''}`)
 
   return (
