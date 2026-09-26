@@ -58,23 +58,29 @@ AgentTuning (frozen)
 ├── groups     large_group, group_radius_m, group_min_move_m
 ├── rubric     distance_tiers [(max_m, points) x3], approach_rate_tiers [(min_m_per_min, points) x2],
 │              heading_points, heading_tolerance_deg, long_stop_min, stop_near_base_m,
-│              stop_points (first, extra), pattern_points {loops_around_base, fixed_range_orbit},
+│              stop_points_first, stop_points_extra, pattern_points {loops_around_base, fixed_range_orbit},
 │              group_points, type_points {truck, bus, van}, level_step
 ├── ceiling    at_base_m, pattern_high_m, approach_heading_deg, approach_high_m,
 │              approach_high_eta_min, approach_medium_ms, approach_medium_m, approach_medium_eta_min
-├── judgment   closing_min_m_per_min, spot_checks
-├── agents     watcher_max_tool_calls, supervisor_max_tool_calls,
-│              watcher_reasoning_effort, supervisor_reasoning_effort, output_language
-│              (each None = use Settings)
+├── judgment   closing_min_m_per_min
+├── agents     watcher_max_tool_calls, supervisor_max_tool_calls, watcher_spot_checks,
+│              watcher_reasoning_effort, supervisor_reasoning_effort, brief_language
+│              (same names as Settings; each None = use Settings)
 └── prompts    watcher: str | None, supervisor: str | None   (None = the .md file)
 ```
 
-- Every default equals today's constant. `DEFAULT_TUNING` is built from the existing module
-  constants in `services/behavior.py`, `services/risk.py`, `services/watch.py` and
-  `agent/watch/watcher.py`, which stay in place as the single source of defaults.
+- Every default equals today's constant. The domain model has no defaults (models only);
+  `services/behavior.py` and `services/risk.py` build `DEFAULT_BEHAVIOR`, `DEFAULT_GROUPS`,
+  `DEFAULT_RUBRIC`, `DEFAULT_CEILING` from their existing constants (which stay in place), and
+  `services/tuning.py` assembles `DEFAULT_TUNING`. Functions take the sub-model they need, which
+  avoids an import cycle between `services/tuning.py` and the modules it reads defaults from.
 - The number of rubric tiers is fixed; only thresholds and points are editable.
 - `GROUP_SAMPLES` (15 min) and `MOVING_MS` stay constants (tied to the tick length / track data).
-- Validation on the model:
+- Validation is a pure function `tuning_problems(t)` in `services/tuning.py` (not Pydantic field
+  constraints), so every rule returns the same `{error, detail}` shape. Each problem is
+  `"<dotted.path>: <code> [arg]"`, problems joined with `"; "`; codes: `positive`, `range lo-hi`,
+  `increasing`, `decreasing`, `tier_count n`, `not_above <path>`, `missing_vars a,b`,
+  `unknown_vars a,b`. The UI translates codes to Turkish. Rules:
   - bounds: distances and speeds > 0, angles 0–360, points 0–100, `large_group` ≥ 2,
     `max_tool_calls` 0–10, `level_step` 1–50;
   - order: distance tiers strictly increasing, approach-rate tiers strictly decreasing,
@@ -103,6 +109,10 @@ AgentTuning (frozen)
   `needs_judgment`, spot-check count in `runner.py`, and the prompt renders.
 - Agent knobs: `tuning.agents.x if not None else settings.x`, resolved once in the runner.
 - No new global state; services stay pure.
+- `AnalysisStore` reuses a finished analysis only when its tuning hash matches
+  (`latest_for(image_id, config_key)`), so a tuning change shows on `/analysis` after re-analysis.
+- Tests: `tests/conftest.py` points the tuning store at `tmp_path` for every client, so a
+  developer's own `backend/.cache/admin_overrides.json` never leaks into tests or the golden test.
 
 ### 3.4 Prompts
 
@@ -123,7 +133,7 @@ AgentTuning (frozen)
 
 | Method | Path | Behavior |
 |---|---|---|
-| GET | `/api/admin/tuning` | `TuningView`: `defaults`, `current`, `overridden` (dotted field paths), `prompt_defaults` {watcher, supervisor}, `prompt_variables` {watcher, supervisor}, `hash`, `load_warning` |
+| GET | `/api/admin/tuning` | `TuningView`: `defaults`, `current`, `overridden` (dotted field paths), `env_knobs` (Settings values used when an agent knob is null), `prompt_defaults` {watcher, supervisor}, `prompt_variables` {watcher, supervisor}, `hash`, `load_warning` |
 | PUT | `/api/admin/tuning` | body: full `AgentTuning`; validate, store the diff, return `TuningView` |
 | DELETE | `/api/admin/tuning` | reset to defaults, return `TuningView` |
 | POST | `/api/admin/prompts/preview` | body: `{name, text, tuning}`; returns `{rendered}` with sample scene values, or `{missing, unknown}` |
