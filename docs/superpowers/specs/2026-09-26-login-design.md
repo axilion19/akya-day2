@@ -22,7 +22,8 @@ call sits behind one function so it can later call `POST /api/auth/login` withou
 | File | Responsibility |
 |------|----------------|
 | `src/lib/auth.ts` | `Role`, `AuthUser` types; mock user list; `async login(username, password): Promise<AuthUser>` (throws `InvalidCredentialsError`); session read/write/clear helpers. No React. |
-| `src/lib/authContext.tsx` | `AuthProvider` + `useAuth()` → `{ user, login, logout }`. Loads the stored session on mount. Same pattern as `lib/selection.tsx`. |
+| `src/hooks/useAuth.ts` | `AuthContext` + `useAuth()` → `{ user, login, logout }`. Same pattern as `hooks/useSelection.ts`. |
+| `src/lib/authContext.tsx` | `AuthProvider`; reads the stored session synchronously on first render (no login flash on reload). |
 | `src/components/auth/LoginForm.tsx` | Presentational form: username, password (show/hide toggle), error text, submit button with pending state, "Demo accounts" box whose entries fill the form on click. Props: `onSubmit`, `error`, `pending`. |
 | `src/components/auth/RequireAuth.tsx` | Route guard. No user → `<Navigate to="/login?next=<path+search>">`. `role` prop set and not matched → "no permission" state (icon + text + link home). Otherwise `<Outlet />`. |
 | `src/pages/LoginPage.tsx` | Two-column layout: left brand panel (AKYA logo, tagline, subtle SVG grid), right card with `LoginForm`. Already logged in → redirect to `/`. On success → navigate to `next` (only if it starts with `/`, else `/`). Single column below `lg`. |

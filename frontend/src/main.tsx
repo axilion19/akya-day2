@@ -3,6 +3,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { AuthProvider } from '@/lib/authContext'
 import { router } from './router'
 import './index.css'
 
@@ -17,7 +18,9 @@ createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <RouterProvider router={router} />
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   </StrictMode>,
