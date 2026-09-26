@@ -24,7 +24,7 @@ export function AnalysisPage() {
   const goBack = () => {
     const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0
     if (idx > 0) void navigate(-1)
-    else void navigate(from === 'map' ? '/map' : '/')
+    else void navigate(from === 'map' ? '/map' : '/overview')
   }
   const { data: analysis, isPending, isError } = useAnalysis(imageId)
   const pb = usePlayback(analysis?.steps.length ?? 8, imageId)

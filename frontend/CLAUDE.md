@@ -17,13 +17,13 @@ src/
   hooks/        useImages, useAnalysis, useAnalysisStream (SSE), useScene, useReports, useChat
   components/
     ui/         shadcn primitives only — do not edit except via shadcn CLI
-    layout/     AppShell, TopBar, StatusIndicator (API + LLM health)
+    layout/     AppShell, Sidebar (collapsible nav, logo → home), StatusIndicator (API + LLM health)
     analysis/   AgentTimeline, StepCard, BriefCard, EvidenceChip, RiskBadge, VehicleTable
     image/      FrameViewer (image + SVG overlay for boxes), OverlayToggles
     map/        FieldMapView (Saha Haritası): MapGrid, ZoneLayer, FrameLayer, TrackLayer, ReportLayer,
                 BaseMarker, ZonePanel, ReportFeed, TimeBar, TrackDetail, MapLegend
     reports/    ReportList, ReportVerdictChip, ReportsTable
-  pages/        OverviewPage, FieldMapPage, AnalysisPage
+  pages/        HomePage (/), OverviewPage (/overview), FieldMapPage (/map), AnalysisPage (/analysis/:id)
   lib/          risk.ts (level → color/label), format.ts (km, m/s, time), geo.ts (display helpers only)
   i18n/         tr.ts (all user-facing strings), en.ts
   mocks/        img_000860.analysis.json (from AGENT_DESIGN §9) for mock-first development.

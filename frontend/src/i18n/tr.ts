@@ -1,6 +1,7 @@
 // All user-facing strings (Turkish, default for the jury). Keys mirror en.ts.
 export const tr = {
-  app: { name: 'SENTINEL', tagline: 'Üs Güvenliği Karar Destek' },
+  app: { name: 'AKYA', tagline: 'Üs Güvenliği Karar Destek' },
+  sidebar: { menu: 'Ana menü', home: 'Ana sayfa', collapse: 'Menüyü daralt', expand: 'Menüyü genişlet' },
   nav: { overview: 'Genel Bakış', map: 'Saha Haritası' },
   status: {
     api: 'API',
