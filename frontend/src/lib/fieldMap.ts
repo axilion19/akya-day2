@@ -16,6 +16,9 @@ export interface Sample extends Pt {
 /** Minutes of the agent's look-back window; report pins fade out over it. */
 export const REPORT_WINDOW_MIN = 120
 
+/** Minutes a track stays on the map after its last sample, fading out. */
+export const TRACK_LINGER_MIN = 20
+
 /** SVG coordinates in meters around the base: x east, y south (SVG y grows downward). */
 export function project(origin: LatLon, p: LatLon): Pt {
   const { x, y } = toLocalM(origin, p)

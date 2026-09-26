@@ -1,3 +1,4 @@
+import { Route } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { t } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -15,10 +16,13 @@ const ITEMS: { key: LegendKey; label: (lg: typeof t.fieldMap.legend) => string; 
 interface Props {
   visible: Record<LegendKey, boolean>
   onToggle: (key: LegendKey) => void
+  allTracks: boolean
+  onAllTracks: () => void
 }
 
-/** Symbol key that doubles as the layer filter: click an entry to hide it (struck through) on the map. */
-export function MapLegend({ visible, onToggle }: Props) {
+/** Symbol key that doubles as the layer filter: click an entry to hide it (struck through) on the map.
+ *  The trailing toggle keeps every track seen so far on the map instead of only recent ones. */
+export function MapLegend({ visible, onToggle, allTracks, onAllTracks }: Props) {
   const lg = t.fieldMap.legend
   return (
     <div className="flex flex-wrap items-center gap-x-1 gap-y-1 rounded-lg border bg-card/80 px-1.5 py-1 text-[11px] text-muted-foreground backdrop-blur">
@@ -42,6 +46,18 @@ export function MapLegend({ visible, onToggle }: Props) {
           </Button>
         )
       })}
+      <span aria-hidden className="mx-1 h-4 w-px bg-border" />
+      <Button
+        size="xs"
+        variant={allTracks ? 'secondary' : 'ghost'}
+        aria-pressed={allTracks}
+        title={lg.allTracksHint}
+        onClick={onAllTracks}
+        className={cn('gap-1.5 px-1.5 text-[11px] font-normal', allTracks ? 'text-emerald-300' : 'text-muted-foreground')}
+      >
+        <Route />
+        {lg.allTracks}
+      </Button>
     </div>
   )
 }

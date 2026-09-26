@@ -42,6 +42,7 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
   const [zone, setZone] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection>(null)
   const [cursor, setCursor] = useState<LatLon | null>(null)
+  const [allTracks, setAllTracks] = useState(false)
   const [zonesOpen, setZonesOpen] = useState(true)
   const [feedOpen, setFeedOpen] = useState(true)
   // Bottom controls stop at the report feed when it is open, else run to the edge.
@@ -124,6 +125,7 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
           tracks={visibleTracks}
           minute={minute}
           mpp={mpp}
+          showAll={allTracks}
           selectedId={selectedTrack?.track_id ?? null}
           onSelect={(id) => setSelection({ kind: 'track', id })}
         />
@@ -156,7 +158,12 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
           onToggle={() => setZonesOpen((o) => !o)}
         />
         <div className="max-w-md">
-          <MapLegend visible={visible} onToggle={(k) => setVisible((v) => ({ ...v, [k]: !v[k] }))} />
+          <MapLegend
+            visible={visible}
+            onToggle={(k) => setVisible((v) => ({ ...v, [k]: !v[k] }))}
+            allTracks={allTracks}
+            onAllTracks={() => setAllTracks((a) => !a)}
+          />
         </div>
       </div>
 

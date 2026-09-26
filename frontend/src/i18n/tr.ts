@@ -199,6 +199,8 @@ export const tr = {
       official: 'resmi rapor',
       thirdParty: '3. taraf rapor',
       toggle: 'Haritada göster/gizle',
+      allTracks: 'Tüm izler',
+      allTracksHint: 'Bu saate kadarki tüm hareket kayıtlarını göster',
     },
     fit: 'Tüm sahayı göster',
     collapse: 'Paneli daralt',
