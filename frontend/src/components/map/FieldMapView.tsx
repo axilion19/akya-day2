@@ -211,6 +211,7 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
           playing={clock.playing}
           speed={clock.speed}
           ticks={model.ticks}
+          activity={model.activity}
           onToggle={clock.toggle}
           onSpeed={clock.setSpeed}
           onSeek={clock.seek}

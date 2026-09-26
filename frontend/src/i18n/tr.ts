@@ -191,6 +191,7 @@ export const tr = {
     speed: (x: number) => `${x}×`,
     speedLabel: 'Oynatma hızı',
     timeline: 'Zaman çizelgesi',
+    lanes: { tracks: 'aktif iz', frames: 'kare', reports: 'rapor' },
     legend: {
       zone: 'bölge merkezi',
       track: 'hareket kaydı (tracks.csv)',
