@@ -29,13 +29,14 @@ const ICON_R = 8.5
 const ICON_SIZE = 11
 
 /** Every vehicle as a dot colored by its agent level. HIGH vehicles show their whole route so far,
- *  vehicles in the operator alert their last 45 min; the selected one also shows its id. */
+ *  MEDIUM/HIGH vehicles in the operator alert their last 45 min; the selected one also shows its id. */
 export function VehicleLayer({ tracks, minute, mpp, levels, focus, types, selectedId, onSelect }: Props) {
   const drawn = tracks
     .map((tr) => {
       const full = pathAt(tr.samples, minute)
       const state = levels.get(tr.id)
-      const since = focus.get(tr.id)
+      // LOW vehicles named in an alert stay dots: a green trail would read as "safe but highlighted".
+      const since = state && state.level !== 'LOW' ? focus.get(tr.id) : undefined
       // A trail draws itself in from the moment the vehicle entered the alert or became HIGH.
       const grow = (from: number | undefined) =>
         from === undefined ? 0 : Math.max(0, Math.min(1, (minute - from) / REVEAL_MIN))
