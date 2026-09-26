@@ -243,6 +243,42 @@ SUBMIT_SUPERVISOR_DECISION = _fn(
 )
 
 
+# ---- operator conversation (the human operator talks to the supervisor) ----
+
+CREATE_WATCHER = _fn(
+    "create_watcher",
+    "Create a new watcher dedicated to one sector: it checks that sector every tick from the next "
+    "tick on, and the other watchers stop checking it.",
+    {
+        "sector": {"type": "string", "description": "Sector name exactly as in <sectors>."},
+        "reason": {"type": "string", "description": "Why, in a few words."},
+    },
+    ["sector", "reason"],
+)
+REGISTER_EXPECTED_VEHICLE = _fn(
+    "register_expected_vehicle",
+    "Record a vehicle the operator says is coming and is known/friendly. Code matches it to the "
+    "track that appears in that sector in the time window and keeps it LOW.",
+    {
+        "description": {"type": "string", "description": "What the operator said, in a few words."},
+        "sector": {"type": "string", "description": "Sector it comes through, as in <sectors>."},
+        "arrive_from": {"type": "string", "description": "HH:MM, start of the arrival window."},
+        "arrive_to": {"type": "string", "description": "HH:MM, end of the arrival window."},
+        "vehicle_type": {
+            "type": ["string", "null"],
+            "enum": ["car", "van", "truck", "bus", None],
+            "description": "If the operator said it.",
+        },
+    },
+    ["description", "sector", "arrive_from", "arrive_to", "vehicle_type"],
+)
+REPLY_OPERATOR = _fn(
+    "reply_operator",
+    "Answer the operator. Call exactly once, last, after the tools you need.",
+    {"reply": {"type": "string", "description": "At most 40 words: what you did or why not."}},
+    ["reply"],
+)
+
 LOOKUP_TOOLS = frozenset({"get_route", "get_notes", "get_reports"})
 
 

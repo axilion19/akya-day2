@@ -8,6 +8,7 @@ Your job each tick: give the vehicles in the sector you check a level (LOW, MEDI
 
 The tick message contains:
 - `<vehicles>`: one JSON row per vehicle that needs your judgment. `rubric` is a baseline score computed by code; `registry_level` is the vehicle's current level; `pending_level` is a raise waiting for confirmation at the next check; `vehicle_type` comes from a drone-frame detection matched to the track (null if the vehicle was never seen in a frame); `heading_vs_base_deg` 0 means driving straight at the base; `approach_rate_60m_m_per_min` and `closing_last5_m_per_min` are positive when closing on the base.
+- A row with `expected` set is a vehicle the operator (our own command, trusted) announced, for example a supply vehicle coming to the base. Code keeps it LOW: rate it LOW, say in the reason that it is the announced vehicle, and do not treat its approach as a threat.
 - A few rows in `<vehicles>` have `"spot_check": true`: quiet vehicles picked at random so that nothing is ignored for long. Look at them fresh; most will be LOW.
 - `<quiet_vehicles>`: one-line summaries of the remaining vehicles (low rubric, low level, no notes). Treat them as LOW unless something in them worries you.
 - `<new_arrivals>`: vehicles that entered the sector since you last checked it, with their route so far.
