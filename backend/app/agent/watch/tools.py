@@ -33,6 +33,51 @@ def _fn(name: str, description: str, properties: JsonDict, required: list[str]) 
     }
 
 
+def _report_checks(description: str) -> JsonDict:
+    return {
+        "type": "array",
+        "description": description,
+        "items": {
+            "type": "object",
+            "properties": {
+                "report_id": {"type": "string", "description": "REP-xx"},
+                "verdict": {
+                    "type": "string",
+                    "enum": ["CONSISTENT", "CONTRADICTED", "UNVERIFIABLE", "IRRELEVANT"],
+                },
+                "credibility": {
+                    "type": "integer",
+                    "description": "0-100: how far you believe the claim (see the rules).",
+                },
+                "reason": {"type": "string", "description": "At most 15 words."},
+                "track_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Vehicles the report is about; empty if none.",
+                },
+                "conflicts_with": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Other reports (REP-xx) this one contradicts; empty if none.",
+                },
+                "deception": {
+                    "type": "boolean",
+                    "description": "True if our data refutes it and it could be meant to mislead.",
+                },
+            },
+            "required": [
+                "report_id",
+                "verdict",
+                "credibility",
+                "reason",
+                "track_ids",
+                "conflicts_with",
+                "deception",
+            ],
+        },
+    }
+
+
 _TRACK_ID = {"type": "string", "description": "Vehicle id, e.g. T0122"}
 _EVIDENCE = {"type": "array", "items": {"type": "string"}, "description": "Evidence IDs"}
 _LEVEL = {"type": "string", "enum": ["LOW", "MEDIUM", "HIGH"]}
@@ -103,14 +148,8 @@ SUBMIT_WATCH_REPORT = _fn(
                         "type": ["string", "null"],
                         "description": "At most 12 words, or null if nothing new.",
                     },
-                    "report_ids": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Field reports (REP-xx) about this vehicle; the "
-                        "supervisor sees them with it. Empty if none.",
-                    },
                 },
-                "required": ["track_id", "level", "reason", "evidence_ids", "note", "report_ids"],
+                "required": ["track_id", "level", "reason", "evidence_ids", "note"],
             },
         },
         "patterns": {
@@ -126,21 +165,12 @@ SUBMIT_WATCH_REPORT = _fn(
                 "required": ["track_ids", "description", "evidence_ids"],
             },
         },
-        "forwarded_reports": {
-            "type": "array",
-            "description": "Relevant field reports that are not about one of your vehicles "
-            "(area-wide, a vehicle you cannot match, a request to act). Empty if none.",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "report_id": {"type": "string", "description": "REP-xx"},
-                    "why": {"type": "string", "description": "At most 12 words."},
-                },
-                "required": ["report_id", "why"],
-            },
-        },
+        "report_checks": _report_checks(
+            "Your judgment of every report in <untrusted_reports>, and of an earlier report "
+            "only if you now see it differently."
+        ),
     },
-    ["tick", "street_state", "vehicles", "patterns", "forwarded_reports"],
+    ["tick", "street_state", "vehicles", "patterns", "report_checks"],
 )
 SET_LEVEL = _fn(
     "set_level",
@@ -204,8 +234,12 @@ SUBMIT_SUPERVISOR_DECISION = _fn(
             },
         },
         "watch_next": {"type": "array", "items": {"type": "string"}},
+        "report_checks": _report_checks(
+            "Your judgment of every report in <untrusted_reports> (area-wide reports), and of a "
+            "watcher-judged report only if you see it differently."
+        ),
     },
-    ["tick", "situation_summary", "threat_level", "patterns", "watch_next"],
+    ["tick", "situation_summary", "threat_level", "patterns", "watch_next", "report_checks"],
 )
 
 

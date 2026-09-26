@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { WatchEventOf } from '@/api/types'
+import type { ReportVerdict, WatchEventOf } from '@/api/types'
 import { RiskBadge } from '@/components/analysis/RiskBadge'
 import { t } from '@/i18n'
 import { placeName } from '@/lib/format'
@@ -15,6 +15,7 @@ interface Props {
 }
 
 const SHOWN = 4
+const ORDER: Record<ReportVerdict, number> = { CONTRADICTED: 0, UNVERIFIABLE: 1, CONSISTENT: 2, IRRELEVANT: 3 }
 const clamp = (x: number) => Math.max(0, Math.min(1, x))
 
 /** One watcher's check, streamed: sector summary, then flagged vehicles one by one, then groups. */
@@ -28,11 +29,8 @@ export function WatcherCard({ report, frames, trace, progress }: Props) {
   const llmMs = trace?.steps.reduce((sum, st) => sum + (st.step === 'llm' && typeof st.latency_ms === 'number' ? st.latency_ms : 0), 0)
   const done = progress >= 1
   const myFrames = frames.filter((f) => f.sector === sector)
-  const reportsById = new Map((report.reports ?? []).map((rep) => [rep.report_id, rep]))
-  const forwarded = (r.forwarded_reports ?? []).flatMap((f) => {
-    const rep = reportsById.get(f.report_id)
-    return rep ? [{ rep, why: f.why }] : []
-  })
+  const texts = new Map((report.reports ?? []).map((rep) => [rep.report_id, rep]))
+  const checks = [...(r.report_checks ?? [])].sort((a, b) => ORDER[a.verdict] - ORDER[b.verdict] || a.credibility - b.credibility)
 
   return (
     <section className="flex flex-col gap-2 rounded-lg border bg-card p-3 shadow-xs animate-in fade-in duration-300">
@@ -70,11 +68,6 @@ export function WatcherCard({ report, frames, trace, progress }: Props) {
             <div className="min-w-0 text-xs">
               <LinkedIds text={v.track_id} />{' '}
               <AgentText text={v.reason} max={95} progress={clamp((progress - start) / (0.55 / Math.max(1, visible.length)))} className="inline" />
-              {done &&
-                (v.report_ids ?? []).map((id) => {
-                  const rep = reportsById.get(id)
-                  return rep ? <ReportRef key={id} report={rep} className="mt-1" /> : null
-                })}
             </div>
           </div>
         )
@@ -92,16 +85,13 @@ export function WatcherCard({ report, frames, trace, progress }: Props) {
             <AgentText text={p.description} max={120} className="inline" />
           </div>
         ))}
-      {done && forwarded.length > 0 && (
-        <div className="flex flex-col gap-1.5 rounded-md border border-violet-500/25 bg-violet-500/5 p-2">
-          <p className="text-[11px] font-semibold tracking-wider text-violet-700 uppercase">{w.forwarded}</p>
-          {forwarded.map(({ rep, why }) => (
-            <ReportRef key={rep.report_id} report={rep} detail={
-                <span className="text-foreground/80">
-                  <LinkedIds text={why} />
-                </span>
-              } />
-          ))}
+      {done && checks.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">{w.reportChecks}</p>
+          {checks.map((j) => {
+            const rep = texts.get(j.report_id)
+            return rep ? <ReportRef key={j.report_id} report={rep} judgment={j} texts={texts} /> : null
+          })}
         </div>
       )}
       {done && trace && <TraceView trace={trace} />}

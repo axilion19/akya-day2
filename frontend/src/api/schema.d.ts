@@ -504,16 +504,6 @@ export interface components {
             /** Text */
             text: string;
         };
-        /**
-         * ForwardedReport
-         * @description A field report a watcher passes to the supervisor without tying it to one vehicle.
-         */
-        ForwardedReport: {
-            /** Report Id */
-            report_id: string;
-            /** Why */
-            why: string;
-        };
         /** FrameAnalyzedEvent */
         FrameAnalyzedEvent: {
             /**
@@ -842,6 +832,33 @@ export interface components {
             extracted_by: "llm" | "rules";
         };
         /**
+         * ReportJudgment
+         * @description An agent's own judgment of one field report: does it fit our tracks, frames and the other
+         *     reports? The verdict and the 0-100 credibility score are the model's; code only checks ids.
+         */
+        ReportJudgment: {
+            /** Report Id */
+            report_id: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "CONSISTENT" | "CONTRADICTED" | "UNVERIFIABLE" | "IRRELEVANT";
+            /** Credibility */
+            credibility: number;
+            /** Reason */
+            reason: string;
+            /** Track Ids */
+            track_ids: string[];
+            /** Conflicts With */
+            conflicts_with: string[];
+            /**
+             * Deception
+             * @default false
+             */
+            deception: boolean;
+        };
+        /**
          * RiskFactor
          * @description One rubric line contributing points to a vehicle score.
          */
@@ -955,6 +972,8 @@ export interface components {
             patterns: components["schemas"]["SupervisorPattern"][];
             /** Watch Next */
             watch_next: string[];
+            /** Report Checks */
+            report_checks: components["schemas"]["ReportJudgment"][];
         };
         /** SupervisorDecisionEvent */
         SupervisorDecisionEvent: {
@@ -979,6 +998,8 @@ export interface components {
             tool_calls: string[];
             /** Warnings */
             warnings: string[];
+            /** Reports */
+            reports: components["schemas"]["FieldReport"][];
         };
         /**
          * SupervisorPattern
@@ -1300,8 +1321,6 @@ export interface components {
             evidence_ids: string[];
             /** Note */
             note: string | null;
-            /** Report Ids */
-            report_ids: string[];
         };
         /** WarningEvent */
         WarningEvent: {
@@ -1399,8 +1418,8 @@ export interface components {
             vehicles: components["schemas"]["VehicleVerdict"][];
             /** Patterns */
             patterns: components["schemas"]["GroupPattern"][];
-            /** Forwarded Reports */
-            forwarded_reports: components["schemas"]["ForwardedReport"][];
+            /** Report Checks */
+            report_checks: components["schemas"]["ReportJudgment"][];
         };
         /** WatcherReportEvent */
         WatcherReportEvent: {

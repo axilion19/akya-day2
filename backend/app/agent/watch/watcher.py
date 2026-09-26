@@ -20,6 +20,7 @@ from app.domain.watch import (
     WATCH_LEVELS,
     GeneratedBy,
     Note,
+    ReportJudgment,
     VehicleRow,
     VehicleVerdict,
     WatcherReport,
@@ -27,7 +28,7 @@ from app.domain.watch import (
 )
 from app.services.watch import gated_level, rubric_watch_level
 
-PROMPT = "watcher_v8"
+PROMPT = "watcher_v9"
 MAX_TOKENS = 12000
 LANGUAGE_NAMES = {"tr": "Turkish", "en": "English"}
 
@@ -45,8 +46,10 @@ class WatcherInput:
     new_arrivals: list[dict[str, Any]]
     notes: list[Note]
     frames: list[dict[str, Any]]
-    reports: list[ReportClaim]
+    reports: list[ReportClaim]  # new since the sector was last checked; each must be judged
     spot_checks: list[str] = field(default_factory=list)  # quiet vehicles sampled at random
+    earlier_reports: list[ReportClaim] = field(default_factory=list)  # same sector, last 2 h
+    judgments: dict[str, dict[str, Any]] = field(default_factory=dict)  # latest per report id
 
 
 @dataclass
@@ -96,9 +99,10 @@ def build_user_message(inp: WatcherInput) -> str:
     moving = sum(r.moving for r in inp.rows)
     multi = len(inp.sectors) > 1
     note_view = [n.model_dump(mode="json") | {"track_id": n.id.split("-")[1]} for n in inp.notes]
-    reports = [
-        {"report_id": c.report_id, "time": c.time, "source": c.source, "text": c.text}
-        for c in inp.reports
+    reports = [report_json(c) for c in inp.reports]
+    earlier = [
+        report_json(c) | ({"judged": j} if (j := inp.judgments.get(c.report_id)) else {})
+        for c in inp.earlier_reports
     ]
 
     def block(tag: str, value: object) -> str:
@@ -122,6 +126,7 @@ def build_user_message(inp: WatcherInput) -> str:
             block("registry_notes", note_view),
             block("frames", inp.frames),
             block("untrusted_reports", reports),
+            block("untrusted_earlier_reports", earlier),
         ]
     )
 
@@ -159,8 +164,9 @@ def _checker(ctx: t.WatchContext, inp: WatcherInput) -> Any:
         evidence += [e for p in report.patterns for e in p.evidence_ids]
         if bad := ctx.unknown_evidence(evidence):
             problems.append(f"unknown evidence ids: {sorted(set(bad))}")
-        if bad_reports := unknown_reports(ctx, report):
-            problems.append(f"unknown report ids (use REP-xx seen so far): {bad_reports}")
+        problems += report_problems(
+            ctx, report.report_checks, inp.tick, {c.report_id for c in inp.reports}
+        )
         if problems:
             raise SubmitError("; ".join(problems))
         return report
@@ -168,21 +174,35 @@ def _checker(ctx: t.WatchContext, inp: WatcherInput) -> Any:
     return parse
 
 
-def _report_ids(report: WatcherReport) -> list[str]:
-    ids = [rid for v in report.vehicles for rid in v.report_ids]
-    return ids + [f.report_id for f in report.forwarded_reports]
+def report_json(c: ReportClaim) -> dict[str, Any]:
+    """A report as the models see it (the text is untrusted)."""
+    return {"report_id": c.report_id, "time": c.time, "source": c.source, "text": c.text}
 
 
-def unknown_reports(ctx: t.WatchContext, report: WatcherReport) -> list[str]:
-    """Report ids that do not exist or were filed after this tick."""
-    now = to_minutes(report.tick)
+def report_problems(
+    ctx: t.WatchContext, checks: list[ReportJudgment], tick: str, required: set[str]
+) -> list[str]:
+    """Id checks on report judgments (the only rules code applies to them): every required
+    report judged once, report ids filed by now, track ids real."""
+    now = to_minutes(tick)
     known = {r.report_id for r in ctx.repo.reports if r.time_min <= now}
-    return sorted({rid for rid in _report_ids(report) if rid not in known})
+    ids = [c.report_id for c in checks]
+    refs = ids + [x for c in checks for x in c.conflicts_with]
+    problems = []
+    if missing := sorted(required - set(ids)):
+        problems.append(f"missing report_checks for {missing}")
+    if bad := sorted({r for r in refs if r not in known}):
+        problems.append(f"unknown report ids (use REP-xx seen so far): {bad}")
+    if dupes := sorted({i for i in ids if ids.count(i) > 1}):
+        problems.append(f"report judged twice: {dupes}")
+    if bad_tracks := sorted({x for c in checks for x in c.track_ids if x not in ctx.repo.tracks}):
+        problems.append(f"unknown track ids in report_checks: {bad_tracks}")
+    return problems
 
 
-def referenced_reports(reports: list[FieldReport], report: WatcherReport) -> list[FieldReport]:
-    """The field reports a watcher attached to vehicles or forwarded, in filing order."""
-    ids = set(_report_ids(report))
+def judged_reports(reports: list[FieldReport], checks: list[ReportJudgment]) -> list[FieldReport]:
+    """The judged reports and the reports they conflict with, in filing order."""
+    ids = {c.report_id for c in checks} | {x for c in checks for x in c.conflicts_with}
     return [r for r in reports if r.report_id in ids]
 
 

@@ -1,6 +1,6 @@
 // Groups a recorded watch run's events by tick for the demo player. No domain logic: levels,
 // reasons and alerts are exactly what the agents produced; this only indexes them.
-import type { FieldReport, VehicleRow, WatchEvent, WatchEventOf, WatchLevel } from '@/api/types'
+import type { FieldReport, ReportJudgment, VehicleRow, WatchEvent, WatchEventOf, WatchLevel } from '@/api/types'
 
 export interface TickView {
   tick: string
@@ -99,28 +99,55 @@ export function buildDemoModel(events: WatchEvent[]): DemoModel {
   return { ticks, levelsAfter, rowsUpTo }
 }
 
-/** A field report watchers passed to the supervisor in one tick: tied to vehicles, forwarded
- *  with a reason, or both. Older recordings have no `reports`; they yield nothing. */
-export interface PassedReport {
+/** One agent's judgment of a field report, with the report and who judged it when. */
+export interface JudgedReport {
   report: FieldReport
-  watchers: string[]
-  trackIds: string[]
-  why: string | null
+  judgment: ReportJudgment
+  by: string // "W1" or "supervisor"
+  tick: string
 }
 
-export function passedReports(watchers: WatchEventOf<'watcher_report'>[]): PassedReport[] {
-  const out = new Map<string, PassedReport>()
-  for (const w of watchers) {
-    for (const report of w.reports ?? []) {
-      const id = report.report_id
-      const item = out.get(id) ?? { report, watchers: [], trackIds: [], why: null }
-      if (!item.watchers.includes(w.watcher)) item.watchers.push(w.watcher)
-      for (const v of w.report.vehicles) if (v.report_ids?.includes(id) && !item.trackIds.includes(v.track_id)) item.trackIds.push(v.track_id)
-      item.why ??= w.report.forwarded_reports?.find((f) => f.report_id === id)?.why ?? null
-      out.set(id, item)
+/** Report judgments of one tick: watchers (those in `done` on a live tick), then the supervisor
+ *  once `supervisorDone`. Older recordings have none. */
+export function tickJudgments(tv: TickView, done?: Set<string>, supervisorDone = true): JudgedReport[] {
+  const out: JudgedReport[] = []
+  for (const w of tv.watchers) {
+    if (done && !done.has(`watcher:${w.watcher}`)) continue
+    const texts = new Map((w.reports ?? []).map((r) => [r.report_id, r]))
+    for (const j of w.report.report_checks ?? []) {
+      const report = texts.get(j.report_id)
+      if (report) out.push({ report, judgment: j, by: w.watcher, tick: tv.tick })
     }
   }
-  return [...out.values()].sort((a, b) => a.report.time_min - b.report.time_min)
+  const sup = tv.supervisor
+  if (sup && supervisorDone) {
+    const texts = new Map((sup.reports ?? []).map((r) => [r.report_id, r]))
+    for (const j of sup.decision.report_checks ?? []) {
+      const report = texts.get(j.report_id)
+      if (report) out.push({ report, judgment: j, by: 'supervisor', tick: tv.tick })
+    }
+  }
+  return out
+}
+
+/** The latest judgment of every report up to the playhead, newest report first. */
+export function reportJudgments(model: DemoModel, head: Playhead, done: Set<string>, supervisorDone: boolean): JudgedReport[] {
+  const latest = new Map<string, JudgedReport>()
+  model.ticks.slice(0, head.index + 1).forEach((tv, i) => {
+    const live = i === head.index
+    for (const j of tickJudgments(tv, live ? done : undefined, !live || supervisorDone)) latest.set(j.report.report_id, j)
+  })
+  return [...latest.values()].sort((a, b) => b.report.time_min - a.report.time_min || b.report.report_id.localeCompare(a.report.report_id))
+}
+
+/** Every report text the recording carries up to a tick (judged reports and their conflicts). */
+export function reportTexts(model: DemoModel, index: number): Map<string, FieldReport> {
+  const out = new Map<string, FieldReport>()
+  for (const tv of model.ticks.slice(0, index + 1)) {
+    for (const w of tv.watchers) for (const r of w.reports ?? []) out.set(r.report_id, r)
+    for (const r of tv.supervisor?.reports ?? []) out.set(r.report_id, r)
+  }
+  return out
 }
 
 /** Every watcher verdict about one vehicle up to a tick, oldest first; on the last tick only
@@ -137,7 +164,7 @@ export function verdictHistory(model: DemoModel, trackId: string, index: number,
             watcher: w.watcher,
             sector: w.sectors[0] ?? '',
             verdict: v,
-            reports: (w.reports ?? []).filter((r) => v.report_ids?.includes(r.report_id)),
+            reports: tickJudgments(tv).filter((j) => j.by === w.watcher && j.judgment.track_ids.includes(trackId)),
           })),
       ),
   )

@@ -33,6 +33,7 @@ from app.domain.watch import (
     FrameAnalyzedEvent,
     LevelChangedEvent,
     OperatorAlertEvent,
+    ReportJudgment,
     SupervisorDecisionEvent,
     TickCompletedEvent,
     TickStartedEvent,
@@ -51,6 +52,7 @@ from app.services.tracks import tracks_at
 logger = logging.getLogger(__name__)
 EventSink = Callable[[Any], None]
 RECENT_EVENTS_KEPT = 15
+EARLIER_REPORTS_MIN = 120  # watchers compare new reports with their sector's reports this far back
 
 
 class WatchRunner:
@@ -77,6 +79,7 @@ class WatchRunner:
         self._last_checked: dict[str, int] = {}
         self._prev_sector: dict[str, str] = {}
         self._recent: list[dict[str, Any]] = []
+        self._judgments: dict[str, dict[str, Any]] = {}  # latest judgment per report id
 
     async def run(self, start_min: int, end_min: int) -> None:
         """Replay every tick from start to end (inclusive)."""
@@ -117,13 +120,13 @@ class WatchRunner:
         new_claims = watch_svc.claims_between(self.claims, minute - watch_svc.TICK_MIN, minute)
 
         inputs = [
-            self._watcher_input(w, sector, tick, minute, rows, frame_events, new_claims)
+            self._watcher_input(w, sector, tick, minute, rows, frame_events)
             for w, sector in checks.items()
         ]
         for inp in inputs:
-            if not inp.rows:
+            if not inp.rows and not inp.reports:
                 self.emit(self._empty_report_event(tick, inp))
-        busy = [i for i in inputs if i.rows]
+        busy = [i for i in inputs if i.rows or i.reports]  # new reports are judged even so
         outcomes = await asyncio.gather(*(run_watcher(self.llm, ctx, i) for i in busy))
         for inp, outcome in zip(busy, outcomes, strict=True):
             self._apply_watcher(tick, inp, outcome)
@@ -279,7 +282,6 @@ class WatchRunner:
         minute: int,
         rows: list[VehicleRow],
         frame_events: list[FrameAnalyzedEvent],
-        new_claims: list[ReportClaim],
     ) -> WatcherInput:
         mine = [r for r in rows if r.sector == sector]
         last = self._last_checked.get(sector)
@@ -313,8 +315,27 @@ class WatchRunner:
             new_arrivals=arrivals,
             notes=[n for r in mine for n in self.registry.get(r.track_id).notes],
             frames=[self._frame_block(fe) for fe in frame_events if fe.sector == sector],
-            reports=watch_svc.claims_for_sectors(new_claims, [sector], self.repo.scene.zones),
+            # every report filed since the sector was last checked, and the ones before for
+            # comparison (report-vs-report contradictions)
+            reports=self._sector_claims(sector, ref, minute),
+            earlier_reports=self._sector_claims(sector, minute - EARLIER_REPORTS_MIN, ref),
+            judgments=dict(self._judgments),
         )
+
+    def _sector_claims(self, sector: str, start_min: int, end_min: int) -> list[ReportClaim]:
+        claims = watch_svc.claims_between(self.claims, start_min, end_min)
+        return watch_svc.claims_for_sectors(claims, [sector], self.repo.scene.zones)
+
+    def _remember_judgments(self, tick: str, by: str, checks: list[ReportJudgment]) -> None:
+        for c in checks:
+            self._judgments[c.report_id] = {
+                "tick": tick,
+                "by": by,
+                "verdict": c.verdict,
+                "credibility": c.credibility,
+                "reason": c.reason,
+                "conflicts_with": c.conflicts_with,
+            }
 
     @staticmethod
     def _empty_report_event(tick: str, inp: WatcherInput) -> WatcherReportEvent:
@@ -333,6 +354,7 @@ class WatchRunner:
 
     def _apply_watcher(self, tick: str, inp: WatcherInput, outcome: WatcherOutcome) -> None:
         by = f"watcher:{inp.watcher_id}"
+        self._remember_judgments(inp.tick, by, outcome.report.report_checks)
         for v in outcome.report.vehicles:
             # enforce_rules only lets a verdict go below the registry down to the vehicle's
             # ceiling, so a lower verdict here is an allowed de-escalation.
@@ -371,7 +393,7 @@ class WatchRunner:
                 report=outcome.report,
                 tool_calls=outcome.tool_calls,
                 warnings=outcome.warnings,
-                reports=watcher_mod.referenced_reports(self.repo.reports, outcome.report),
+                reports=watcher_mod.judged_reports(self.repo.reports, outcome.report.report_checks),
             )
         )
         for a in inp.new_arrivals:
@@ -417,22 +439,14 @@ class WatchRunner:
         }
 
     def _passed_reports(self, outcome: WatcherOutcome) -> list[dict[str, Any]]:
-        """Reports the watcher attached to vehicles or forwarded, with their (untrusted) text."""
-        about: dict[str, list[str]] = {}
-        for v in outcome.report.vehicles:
-            for rid in v.report_ids:
-                about.setdefault(rid, []).append(v.track_id)
-        why = {f.report_id: f.why for f in outcome.report.forwarded_reports}
+        """The watcher's report judgments with the report text (untrusted); irrelevant ones are
+        left out."""
+        claims = {c.report_id: c for c in self.claims}
         return [
-            {
-                "report_id": r.report_id,
-                "time": r.time,
-                "source": r.source,
-                "text": r.text,
-                "track_ids": about.get(r.report_id, []),
-                "why": why.get(r.report_id),
-            }
-            for r in watcher_mod.referenced_reports(self.repo.reports, outcome.report)
+            watcher_mod.report_json(claims[c.report_id])
+            | c.model_dump(mode="json", exclude={"report_id"})
+            for c in outcome.report.report_checks
+            if c.verdict != "IRRELEVANT"
         ]
 
     def _unchecked(self, checked: set[str], rows: list[VehicleRow]) -> list[dict[str, Any]]:
@@ -485,8 +499,10 @@ class WatchRunner:
                 actions=sup.actions,
                 tool_calls=sup.tool_calls,
                 warnings=sup.warnings,
+                reports=watcher_mod.judged_reports(self.repo.reports, sup.decision.report_checks),
             )
         )
+        self._remember_judgments(tick, "supervisor", sup.decision.report_checks)
 
     def _emit_change(self, tick: str, change: LevelChange) -> None:
         self.emit(

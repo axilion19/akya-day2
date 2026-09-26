@@ -3,7 +3,8 @@ import type { WatchEventOf } from '@/api/types'
 import { RiskBadge } from '@/components/analysis/RiskBadge'
 import { t } from '@/i18n'
 import { cn } from '@/lib/utils'
-import type { PassedReport } from '@/lib/watchDemo'
+import type { FieldReport } from '@/api/types'
+import type { JudgedReport } from '@/lib/watchDemo'
 import { AgentText, LinkedIds } from './AgentText'
 import { ReportRef } from './ReportRef'
 
@@ -17,7 +18,8 @@ interface Props {
   decision: WatchEventOf<'supervisor_decision'> | undefined
   alerts: Alert[] // this tick's alerts
   history: Alert[] // earlier alerts, newest first
-  reports: PassedReport[] // field reports the watchers passed on this tick
+  contradicted: JudgedReport[] // this tick's contradicted reports (watchers and supervisor)
+  texts: Map<string, FieldReport>
   progress: number // supervisor text, 0..1
   alertProgress: number // operator alert, 0..1
 }
@@ -35,7 +37,7 @@ const URGENCY_TEXT: Record<string, string> = {
 
 /** Operator view: current threat, one-line situation, the alert to act on, and the alert log.
  *  Internal detail (patterns, level changes, traces) is left out on purpose. */
-export function SupervisorCard({ tick, decision, alerts, history, reports, progress, alertProgress }: Props) {
+export function SupervisorCard({ tick, decision, alerts, history, contradicted, texts, progress, alertProgress }: Props) {
   const w = t.watch
   const d = decision?.decision
   return (
@@ -56,25 +58,16 @@ export function SupervisorCard({ tick, decision, alerts, history, reports, progr
         <p className="rounded-lg border border-dashed bg-card p-3 text-xs text-muted-foreground">{w.noAlerts}</p>
       )}
 
-      {progress > 0 && reports.length > 0 && (
-        <section className="flex flex-col gap-1.5 rounded-lg border bg-card px-3 py-2">
-          <h3 className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">{w.passedReports}</h3>
-          {reports.map((p) => (
+      {progress > 0 && contradicted.length > 0 && (
+        <section className="flex flex-col gap-1.5">
+          <h3 className="text-xs font-semibold tracking-widest text-red-700 uppercase">{w.contradicted}</h3>
+          {contradicted.map((j) => (
             <ReportRef
-              key={p.report.report_id}
-              report={p.report}
-              detail={
-                <span className="text-foreground/80">
-                  {p.trackIds.length > 0 && (
-                    <>
-                      {w.report.about} <LinkedIds text={p.trackIds.join(' ')} />
-                      {p.why ? ' · ' : ''}
-                    </>
-                  )}
-                  {p.why && <LinkedIds text={p.why} />}
-                  <span className="text-muted-foreground"> · {w.report.from(p.watchers.join(', '))}</span>
-                </span>
-              }
+              key={j.report.report_id}
+              report={j.report}
+              judgment={j.judgment}
+              texts={texts}
+              meta={`${j.by === 'supervisor' ? w.report.supervisor : j.by} · ${j.tick}`}
             />
           ))}
         </section>

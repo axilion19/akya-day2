@@ -117,14 +117,22 @@ class VehicleVerdict(DomainModel):
     reason: str = Field(min_length=1)
     evidence_ids: list[str] = Field(min_length=1)
     note: str | None = None
-    report_ids: list[str] = Field(default_factory=list)  # field reports about this vehicle
 
 
-class ForwardedReport(DomainModel):
-    """A field report a watcher passes to the supervisor without tying it to one vehicle."""
+ReportVerdict = Literal["CONSISTENT", "CONTRADICTED", "UNVERIFIABLE", "IRRELEVANT"]
+
+
+class ReportJudgment(DomainModel):
+    """An agent's own judgment of one field report: does it fit our tracks, frames and the other
+    reports? The verdict and the 0-100 credibility score are the model's; code only checks ids."""
 
     report_id: str
-    why: str = Field(min_length=1)
+    verdict: ReportVerdict
+    credibility: int = Field(ge=0, le=100)
+    reason: str = Field(min_length=1)
+    track_ids: list[str] = Field(default_factory=list)  # vehicles the report is about
+    conflicts_with: list[str] = Field(default_factory=list)  # reports it contradicts
+    deception: bool = False  # a refuted claim that could be meant to mislead
 
 
 class GroupPattern(DomainModel):
@@ -142,7 +150,7 @@ class WatcherReport(DomainModel):
     street_state: str = Field(min_length=1)
     vehicles: list[VehicleVerdict]
     patterns: list[GroupPattern] = Field(default_factory=list)
-    forwarded_reports: list[ForwardedReport] = Field(default_factory=list)
+    report_checks: list[ReportJudgment] = Field(default_factory=list)
 
 
 class Suspicion(DomainModel):
@@ -171,6 +179,7 @@ class SupervisorDecision(DomainModel):
     threat_level: WatchLevel
     patterns: list[SupervisorPattern] = Field(default_factory=list)
     watch_next: list[str] = Field(default_factory=list)
+    report_checks: list[ReportJudgment] = Field(default_factory=list)  # area-wide reports
 
 
 class SupervisorAction(DomainModel):
@@ -259,8 +268,8 @@ class WatcherReportEvent(DomainModel):
     report: WatcherReport
     tool_calls: list[str]
     warnings: list[str]
-    # The field reports this check attached to vehicles or forwarded (untrusted text), so a
-    # client can show them without another request.
+    # The field reports judged in `report.report_checks` (untrusted text), so a client can show
+    # them without another request.
     reports: list[FieldReport] = Field(default_factory=list)
 
 
@@ -300,6 +309,7 @@ class SupervisorDecisionEvent(DomainModel):
     actions: list[SupervisorAction]
     tool_calls: list[str]
     warnings: list[str]
+    reports: list[FieldReport] = Field(default_factory=list)  # judged in decision.report_checks
 
 
 class TrackerUpdateEvent(DomainModel):
