@@ -100,14 +100,18 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
   const previous = model.ticks[head.index - 1]
   // Alerts already delivered: earlier ticks, plus this tick's once fully written; newest first.
   const alertDone = progress(head.elapsed, SCHEDULE.alert) >= 1
+  // The previous tick's result (summary, alert, contradicted reports) stays up until this tick's
+  // supervisor starts writing, so the operator has time to read an alert that just finished.
+  const holding = head.elapsed < SCHEDULE.supervisor.start
+  const shown = holding ? previous : tick
   const history = model.ticks
-    .slice(0, head.index)
+    .slice(0, holding ? Math.max(0, head.index - 1) : head.index)
     .flatMap((tv) => tv.alerts.map((e) => e.alert))
     .reverse()
   const alertLive = tick.alerts.length > 0 && head.elapsed >= SCHEDULE.alert.start && !alertDone
   const judged = reportJudgments(model, head, done, complete)
   const texts = reportTexts(model, head.index)
-  const contradicted = latestPerReport(tickJudgments(tick)).filter((j) => j.judgment.verdict === 'CONTRADICTED' || j.judgment.deception)
+  const contradicted = latestPerReport(shown ? tickJudgments(shown) : []).filter((j) => j.judgment.verdict === 'CONTRADICTED' || j.judgment.deception)
   const watchersLive = head.elapsed > 0 && !done.has(`watcher:${tick.watchers[tick.watchers.length - 1]?.watcher ?? ''}`)
 
   return (
@@ -175,12 +179,12 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
                     key={`sup-${tick.tick}`}
                     tick={head.elapsed >= SCHEDULE.supervisor.start ? tick.tick : (previous?.tick ?? tick.tick)}
                     decision={head.elapsed >= SCHEDULE.supervisor.start ? tick.supervisor : previous?.supervisor}
-                    alerts={head.elapsed >= SCHEDULE.supervisor.start ? tick.alerts.map((e) => e.alert) : []}
+                    alerts={(shown?.alerts ?? []).map((e) => e.alert)}
                     history={history}
-                    contradicted={head.elapsed >= SCHEDULE.supervisor.start ? contradicted : []}
+                    contradicted={contradicted}
                     texts={texts}
                     progress={head.elapsed >= SCHEDULE.supervisor.start ? supProgress : previous ? 1 : 0}
-                    alertProgress={progress(head.elapsed, SCHEDULE.alert)}
+                    alertProgress={holding ? (previous ? 1 : 0) : progress(head.elapsed, SCHEDULE.alert)}
                   />
                 )}
               </TabsContent>

@@ -378,7 +378,7 @@ export const tr = {
     reportsSummary: (n: number, bad: number, deception: number) =>
       `${n} rapor değerlendirildi · ${bad} çelişkili · ${deception} aldatma şüphesi`,
     sourceScore: (source: string, avg: number, n: number) => `${source}: ort. güven ${avg} (${n} rapor)`,
-    reportsHint: 'Karar ve 0-100 güven puanı modelin kendi değerlendirmesidir; kod yalnızca kimlikleri denetler. Metni görmek için rapor kimliğine tıklayın.',
+    reportsHint: 'Karar ve 0-100 güven puanı modelin kendi değerlendirmesidir; kod yalnızca kimlikleri denetler. Çelişen raporun metni için kimliğine tıklayın.',
     report: {
       source: { official: 'resmi', third_party: '3. taraf' } as Record<string, string>,
       untrusted: 'doğrulanmamış rapor metni',

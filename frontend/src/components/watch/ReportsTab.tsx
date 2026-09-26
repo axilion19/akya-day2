@@ -1,7 +1,9 @@
-import type { FieldReport } from '@/api/types'
+import type { FieldReport, ReportVerdict } from '@/api/types'
 import { t } from '@/i18n'
 import { type JudgedReport, judgeLabel } from '@/lib/watchDemo'
 import { ReportRef } from './ReportRef'
+
+const SECTIONS: ReportVerdict[] = ['CONTRADICTED', 'UNVERIFIABLE', 'CONSISTENT', 'IRRELEVANT']
 
 interface Props {
   judged: JudgedReport[] // latest judgment per report up to the playhead, newest first
@@ -32,15 +34,27 @@ export function ReportsTab({ judged, texts }: Props) {
         })}
         <p className="text-[11px] text-muted-foreground">{w.reportsHint}</p>
       </section>
-      {judged.map((j) => (
-        <ReportRef
-          key={j.report.report_id}
-          report={j.report}
-          judgment={j.judgment}
-          texts={texts}
-          meta={`${judgeLabel(j.by, w.report.supervisor)} · ${j.tick}`}
-        />
-      ))}
+      {SECTIONS.map((verdict) => {
+        const items = judged.filter((j) => j.judgment.verdict === verdict)
+        if (items.length === 0) return null
+        return (
+          <section key={verdict} className="flex flex-col gap-1.5">
+            <h3 className="mt-1 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+              {w.report.verdict[verdict]} · {items.length}
+            </h3>
+            {items.map((j) => (
+              <ReportRef
+                key={j.report.report_id}
+                report={j.report}
+                judgment={j.judgment}
+                texts={texts}
+                meta={`${judgeLabel(j.by, w.report.supervisor)} · ${j.tick}`}
+                showText
+              />
+            ))}
+          </section>
+        )
+      })}
     </div>
   )
 }

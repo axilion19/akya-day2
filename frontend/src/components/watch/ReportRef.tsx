@@ -12,6 +12,8 @@ interface Props {
   texts?: Map<string, FieldReport>
   /** Who judged it and when, e.g. "W2 · 10:15". */
   meta?: string
+  /** Show the report text without a click (the conflicting reports' texts still open on click). */
+  showText?: boolean
   className?: string
 }
 
@@ -24,7 +26,7 @@ const VERDICT: Record<ReportVerdict, { box: string; badge: string; bar: string }
 
 /** A field report as an agent judged it: verdict, the model's 0-100 credibility, reason, the
  *  reports it contradicts; a click on the id shows the untrusted texts. */
-export function ReportRef({ report, judgment: j, texts, meta, className }: Props) {
+export function ReportRef({ report, judgment: j, texts, meta, showText = false, className }: Props) {
   const r = t.watch.report
   const [open, setOpen] = useState(false)
   const style = VERDICT[j.verdict]
@@ -52,6 +54,7 @@ export function ReportRef({ report, judgment: j, texts, meta, className }: Props
         {j.deception && <span className="rounded bg-red-600 px-1.5 py-px text-[10px] font-semibold text-white">{r.deception}</span>}
         {meta && <span className="ml-auto font-mono text-[10px] text-muted-foreground">{meta}</span>}
       </p>
+      {showText && <Quote label={r.untrusted} text={report.text} />}
       <p className="leading-relaxed">
         <LinkedIds text={j.reason} />
         {extraTracks.length > 0 && (
@@ -73,7 +76,7 @@ export function ReportRef({ report, judgment: j, texts, meta, className }: Props
       )}
       {open && (
         <div className="flex flex-col gap-1">
-          <Quote label={`${report.report_id} · ${r.untrusted}`} text={report.text} />
+          {!showText && <Quote label={`${report.report_id} · ${r.untrusted}`} text={report.text} />}
           {conflicts.map((c) =>
             c.text ? <Quote key={c.id} label={`${c.id} · ${r.source[c.text.source] ?? c.text.source} · ${c.text.time}`} text={c.text.text} /> : null,
           )}
