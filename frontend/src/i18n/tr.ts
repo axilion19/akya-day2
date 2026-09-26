@@ -203,6 +203,7 @@ export const tr = {
     },
     hint: 'tekerlek: yakınlaş · sürükle: kaydır · ize tıkla: detay · kareye tıkla: analiz · boşluk: oynat · ←/→: 5 dk',
     fit: 'Tüm sahayı göster',
+    cursor: { lat: 'enlem', lon: 'boylam' },
     loadError: 'Harita verisi yüklenemedi. API çalışıyor mu?',
     track: {
       title: (id: string) => `İz ${id}`,

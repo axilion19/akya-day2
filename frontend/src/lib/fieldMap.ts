@@ -1,7 +1,7 @@
 // Display helpers for the field map: projection to local meters and time interpolation for drawing.
 // No domain math here: motion figures (speed, approach, stops) come from the API.
 import type { LatLon, TrackPoint } from '@/api/types'
-import { toLocalM } from './geo'
+import { fromLocalM, toLocalM } from './geo'
 
 export interface Pt {
   x: number
@@ -21,6 +21,9 @@ export function project(origin: LatLon, p: LatLon): Pt {
   const { x, y } = toLocalM(origin, p)
   return { x, y: -y }
 }
+
+/** Inverse of `project`: SVG meters back to lat/lon. */
+export const unproject = (origin: LatLon, p: Pt): LatLon => fromLocalM(origin, p.x, -p.y)
 
 export const toSamples = (origin: LatLon, points: TrackPoint[]): Sample[] =>
   points.map((p) => ({ t: p.time_min, ...project(origin, p.position) }))

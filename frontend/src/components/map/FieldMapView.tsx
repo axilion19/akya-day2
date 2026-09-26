@@ -1,14 +1,14 @@
 import { Maximize } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import type { ImageMeta, MapReport, MapTrack, Scene } from '@/api/types'
+import type { ImageMeta, LatLon, MapReport, MapTrack, Scene } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { useClock } from '@/hooks/useClock'
 import { useTrackMotion } from '@/hooks/useFieldMap'
 import { useFieldMapModel } from '@/hooks/useFieldMapModel'
 import { useMapViewport } from '@/hooks/useMapViewport'
 import { t } from '@/i18n'
-import { hhmm } from '@/lib/fieldMap'
+import { hhmm, unproject } from '@/lib/fieldMap'
 import { BaseMarker } from './BaseMarker'
 import { FrameLayer } from './FrameLayer'
 import { MapGrid } from './MapGrid'
@@ -40,6 +40,7 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
   const [sources, setSources] = useState<Record<SourceKey, boolean>>({ official: true, third_party: true })
   const [zone, setZone] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection>(null)
+  const [cursor, setCursor] = useState<LatLon | null>(null)
 
   const minute = clock.minute
   const inZone = (z: string | null) => zone === null || z === zone
@@ -81,9 +82,22 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
     if (p) flyTo(p, Math.min(4000, model.fitRadiusM))
   }
 
+  // Screen → SVG meters via the element's CTM, then back to lat/lon for the hover readout.
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    handlers.onPointerMove(e)
+    const ctm = e.currentTarget.getScreenCTM()
+    if (!ctm) return
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse())
+    setCursor(unproject(model.origin, { x: p.x, y: p.y }))
+  }
+
   return (
     <div className="relative h-full overflow-hidden bg-[#060a0f]">
-      <svg ref={svgRef} viewBox={viewBox} className="absolute inset-0 size-full cursor-grab touch-none select-none active:cursor-grabbing" {...handlers}>
+      <svg ref={svgRef} viewBox={viewBox} className="absolute inset-0 size-full cursor-grab touch-none select-none active:cursor-grabbing"
+        {...handlers}
+        onPointerMove={onPointerMove}
+        onPointerLeave={() => setCursor(null)}
+      >
         <rect x={-1e5} y={-1e5} width={2e5} height={2e5} fill="transparent" onClick={() => setSelection(null)} />
         <MapGrid extentM={Math.ceil(model.fitRadiusM / 1000) * 1000 + 3000} mpp={mpp} />
         <ZoneLayer
@@ -151,6 +165,13 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
             isError={motion.isError}
             onClose={() => setSelection(null)}
           />
+        </div>
+      )}
+
+      {cursor && (
+        <div className="pointer-events-none absolute right-[24rem] bottom-[5.5rem] rounded-md border bg-card/85 px-2.5 py-1 font-mono text-[11px] text-muted-foreground tabular-nums backdrop-blur">
+          {t.fieldMap.cursor.lat} <span className="text-foreground">{cursor.lat.toFixed(6)}</span> · {t.fieldMap.cursor.lon}{' '}
+          <span className="text-foreground">{cursor.lon.toFixed(6)}</span>
         </div>
       )}
 
