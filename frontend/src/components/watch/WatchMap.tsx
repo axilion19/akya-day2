@@ -21,6 +21,7 @@ interface Props {
   levels: Map<string, VehicleState>
   focus: Map<string, number>
   types: Map<string, string>
+  expected: Set<string>
   selectedId: string | null
   onSelect: (id: string | null) => void
   onOpenFrame: (imageId: string) => void
@@ -28,7 +29,7 @@ interface Props {
 
 /** The field at one tick: checked sectors, this tick's frame, and every vehicle by agent level. */
 export function WatchMap(props: Props) {
-  const { scene, images, tracks, reports, minute, checks, levels, focus, types, selectedId, onSelect, onOpenFrame } = props
+  const { scene, images, tracks, reports, minute, checks, levels, focus, types, expected, selectedId, onSelect, onOpenFrame } = props
   const model = useFieldMapModel(scene, images, tracks, reports)
   const { ref, viewBox, bounds, mpp, fit, handlers } = useMapViewport(model.fitRadiusM)
   const frames = model.frames.filter((f) => Math.abs(f.captureMin - minute) <= 5)
@@ -40,7 +41,7 @@ export function WatchMap(props: Props) {
         <MapGrid bounds={bounds} />
         <SectorLayer zones={model.zones} checks={checks} />
         <FrameLayer frames={frames} minute={minute} mpp={mpp} selectedId={null} onSelect={onOpenFrame} />
-        <VehicleLayer tracks={model.tracks} minute={minute} mpp={mpp} levels={levels} focus={focus} types={types} selectedId={selectedId} onSelect={onSelect} />
+        <VehicleLayer tracks={model.tracks} minute={minute} mpp={mpp} levels={levels} focus={focus} types={types} expected={expected} selectedId={selectedId} onSelect={onSelect} />
         <BaseMarker position={scene.base.position} mpp={mpp} />
       </svg>
       <Button size="icon-sm" variant="outline" className="absolute right-3 bottom-3 bg-card/85" onClick={fit} aria-label={t.fieldMap.fit} title={t.fieldMap.fit}>

@@ -57,6 +57,8 @@ class Result:
     turns: Counter[str]  # llm / fallback
     repairs: int
     clamps: int
+    # Vehicles the operator announced: (expected id, highest level they got, alerted?)
+    cleared: dict[str, tuple[str, str, bool]] = field(default_factory=dict)
 
 
 def fast_close_approach(row: VehicleRow) -> bool:
@@ -118,6 +120,13 @@ def run_ticks(events: list[Event]) -> list[int]:
 def evaluate(events: list[Event], truth: dict[str, Truth]) -> Result:
     """Compare a run's events with the ground truth (`ground_truth` for the real data)."""
     ticks = run_ticks(events)
+    announced = {
+        e["vehicle"]["track_id"]: e["vehicle"]["expected_id"]
+        for e in events
+        if e["type"] == "expected_vehicle" and e["vehicle"].get("track_id")
+    }
+    # The operator cleared these: not must-catch, whatever the code rules say.
+    truth = {tid: t for tid, t in truth.items() if tid not in announced}
     high_at: dict[str, int] = {}
     alert_at: dict[str, int] = {}
     unbacked_high: list[tuple[str, str, str]] = []
@@ -152,9 +161,17 @@ def evaluate(events: list[Event], truth: dict[str, Truth]) -> Result:
             msg = e["message"]
             repairs += msg.startswith("invalid submit")
             clamps += "clamped" in msg or "may be at most" in msg
+    order = {"LOW": 0, "MEDIUM": 1, "HIGH": 2}
+    cleared = {}
+    for tid, exp_id in announced.items():
+        levels = [
+            e["to_level"] for e in events if e["type"] == "level_changed" and e["track_id"] == tid
+        ]
+        top = max(levels, key=order.__getitem__, default="LOW")
+        cleared[tid] = (exp_id, top, tid in alert_at)
     return Result(
         ticks, truth, high_at, alert_at, unbacked_high, unbacked_alerts, alerts, verdicts,
-        deception, turns, repairs, clamps,
+        deception, turns, repairs, clamps, cleared,
     )  # fmt: skip
 
 
@@ -180,6 +197,13 @@ def headline(r: Result) -> list[str]:
         lines.append(
             f"{label}: {len(high)}/{len(ids)} rated HIGH{med}; {len(alerted)}/{len(ids)} named in "
             "an operator alert."
+        )
+    for tid, (exp_id, top, alerted) in r.cleared.items():
+        state = "kept LOW throughout" if top == "LOW" and not alerted else f"reached {top}"
+        lines.append(
+            f"Operator-announced vehicle {tid} ({exp_id}): {state}, never alerted"
+            if not alerted
+            else f"Operator-announced vehicle {tid} ({exp_id}): {state}, alerted"
         )
     lines.append(
         f"HIGH ratings not backed by a code rule: {len(r.unbacked_high)} of {len(r.high_at)}; "

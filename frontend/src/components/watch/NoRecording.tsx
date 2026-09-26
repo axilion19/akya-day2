@@ -12,6 +12,7 @@ interface Props {
 }
 
 const EMPTY = new Map()
+const NONE = new Set<string>()
 
 /** The watch page when no recorded agent run covers the master clock: the live map without agent
  *  levels, and where recordings exist. */
@@ -31,6 +32,7 @@ export function NoRecording({ field, windows }: Props) {
             levels={EMPTY}
             focus={EMPTY}
             types={EMPTY}
+            expected={NONE}
             selectedId={selected}
             onSelect={setSelected}
             onOpenFrame={(id) => void navigate(`/analysis/${id}`)}

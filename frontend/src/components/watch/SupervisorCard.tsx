@@ -4,8 +4,9 @@ import { RiskBadge } from '@/components/analysis/RiskBadge'
 import { t } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { FieldReport } from '@/api/types'
-import { type JudgedReport, judgeLabel } from '@/lib/watchDemo'
+import { type ChatEntry, type JudgedReport, judgeLabel } from '@/lib/watchDemo'
 import { AgentText, LinkedIds } from './AgentText'
+import { OperatorChat } from './OperatorChat'
 import { ReportRef } from './ReportRef'
 
 type Alert = WatchEventOf<'operator_alert'>['alert']
@@ -20,6 +21,7 @@ interface Props {
   history: Alert[] // earlier alerts, newest first
   contradicted: JudgedReport[] // this tick's contradicted reports (watchers and supervisor)
   texts: Map<string, FieldReport>
+  chat: { entry: ChatEntry; reply: number }[] // operator conversation so far (scenario runs)
   progress: number // supervisor text, 0..1
   alertProgress: number // operator alert, 0..1
 }
@@ -37,7 +39,7 @@ const URGENCY_TEXT: Record<string, string> = {
 
 /** Operator view: current threat, one-line situation, the alert to act on, and the alert log.
  *  Internal detail (patterns, level changes, traces) is left out on purpose. */
-export function SupervisorCard({ tick, decision, alerts, history, contradicted, texts, progress, alertProgress }: Props) {
+export function SupervisorCard({ tick, decision, alerts, history, contradicted, texts, chat, progress, alertProgress }: Props) {
   const w = t.watch
   const d = decision?.decision
   return (
@@ -49,6 +51,8 @@ export function SupervisorCard({ tick, decision, alerts, history, contradicted, 
         </header>
         {d && progress > 0 && <AgentText text={d.situation_summary} max={120} progress={progress} className="text-sm" />}
       </section>
+
+      {chat.length > 0 && <OperatorChat items={chat} />}
 
       {alertProgress > 0 &&
         alerts.map((a) => (

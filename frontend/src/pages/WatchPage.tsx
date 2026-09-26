@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import type { ImageMeta, MapReport, MapTrack, Scene } from '@/api/types'
 import { TimeBar } from '@/components/map/TimeBar'
@@ -19,6 +19,8 @@ import { t } from '@/i18n'
 import {
   type DemoModel,
   alertFocus,
+  chatAt,
+  expectedAt,
   SCHEDULE,
   finishedAgents,
   latestPerReport,
@@ -73,6 +75,8 @@ function WatchPlayer({ model, field, initialVehicle, initialTab }: PlayerProps) 
   const w = t.watch
   const clock = useMasterClock()
   const [selected, setSelected] = useState<string | null>(initialVehicle)
+  // A scenario run's synthetic vehicles are drawn with the real tracks.
+  const map = useMemo(() => ({ ...field, tracks: [...field.tracks, ...model.extraTracks] }), [field, model.extraTracks])
   const navigate = useNavigate()
 
   const head = playheadAt(model, clock.minute)
@@ -96,6 +100,7 @@ function WatchPlayer({ model, field, initialVehicle, initialTab }: PlayerProps) 
     .flatMap((tv) => tv.alerts.map((e) => e.alert))
     .reverse()
   const alertLive = tick.alerts.length > 0 && head.elapsed >= SCHEDULE.alert.start && !alertDone
+  const announced = expectedAt(model, clock.minute)
   const judged = reportJudgments(model, head, done, complete)
   const texts = reportTexts(model, head.index)
   const contradicted = latestPerReport(shown ? tickJudgments(shown) : []).filter((j) => j.judgment.verdict === 'CONTRADICTED' || j.judgment.deception)
@@ -111,12 +116,13 @@ function WatchPlayer({ model, field, initialVehicle, initialTab }: PlayerProps) 
         <div className="flex min-h-0 flex-1 gap-3">
           <div className="relative min-w-0 flex-1">
             <WatchMap
-              {...field}
+              {...map}
               minute={clock.minute}
               checks={tick.start.checks}
               levels={levels}
               focus={alertFocus(model, head)}
               types={vehicleTypes(model, head)}
+              expected={new Set(announced.keys())}
               selectedId={selected}
               onSelect={setSelected}
               onOpenFrame={(id) => void navigate(`/analysis/${id}`)}
@@ -130,6 +136,7 @@ function WatchPlayer({ model, field, initialVehicle, initialTab }: PlayerProps) 
                 state={levels.get(selected)}
                 row={rows.get(selected)}
                 history={verdictHistory(model, selected, head.index, done)}
+                announced={announced.get(selected)}
                 onClose={() => setSelected(null)}
               />
             )}
@@ -160,6 +167,7 @@ function WatchPlayer({ model, field, initialVehicle, initialTab }: PlayerProps) 
                     history={history}
                     contradicted={contradicted}
                     texts={texts}
+                    chat={chatAt(model, clock.minute)}
                     progress={head.elapsed >= SCHEDULE.supervisor.start ? supProgress : previous ? 1 : 0}
                     alertProgress={holding ? (previous ? 1 : 0) : progress(head.elapsed, SCHEDULE.alert)}
                   />
