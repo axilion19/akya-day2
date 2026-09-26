@@ -1,15 +1,161 @@
-import { ShieldHalf } from 'lucide-react'
+import { Activity, Camera, Navigation, RadioTower } from 'lucide-react'
+import { useMemo } from 'react'
+import { useSearchParams } from 'react-router'
+import type { Analysis } from '@/api/types'
+import { RiskBadge } from '@/components/analysis/RiskBadge'
+import { ActivityChart } from '@/components/home/ActivityChart'
+import { KpiTile } from '@/components/home/KpiTile'
+import { RecentReports } from '@/components/home/RecentReports'
+import { VehicleWatchList } from '@/components/home/VehicleWatchList'
+import { ZoneStatusCard } from '@/components/home/ZoneStatusCard'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useAnalyses } from '@/hooks/useAnalysis'
+import { useFieldMapData } from '@/hooks/useFieldMap'
 import { t } from '@/i18n'
+import { hhmm } from '@/lib/fieldMap'
+import { placeName } from '@/lib/format'
+import { SERIES_BIN_MIN, dayBounds, situationAt } from '@/lib/situation'
+import { maxLevel, watchedVehicles } from '@/lib/watchlist'
 
-// TODO(P4): design the home page (next step); for now only the product name, reached from the logo.
+const WATCH_LIMIT = 5
+const REPORT_LIMIT = 6
+
+const parseTime = (v: string | null) => {
+  const m = v?.match(/^(\d{1,2}):(\d{2})$/)
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null
+}
+
+/** Situation board for the security chief: where things stand at the chosen time (default: latest data). */
 export function HomePage() {
-  return (
-    <div className="grid h-full place-items-center p-6">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <ShieldHalf aria-hidden className="size-12 text-primary" />
-        <h1 className="text-3xl font-semibold tracking-[0.4em]">{t.app.name}</h1>
-        <p className="text-sm text-muted-foreground">{t.app.tagline}</p>
+  const th = t.home
+  const { scene, images, tracks, reports, isPending, isError, refetch } = useFieldMapData()
+  const [params, setParams] = useSearchParams()
+  const bounds = useMemo(() => dayBounds(tracks ?? [], reports ?? []), [tracks, reports])
+  const now = Math.min(bounds.end, Math.max(bounds.start, parseTime(params.get('t')) ?? bounds.end))
+
+  const sit = useMemo(
+    () => (scene && images && tracks && reports ? situationAt(now, scene.zones.map((z) => z.name), images, tracks, reports) : null),
+    [now, scene, images, tracks, reports],
+  )
+  const frameIds = sit?.zones.flatMap((z) => (z.frame ? [z.frame.image_id] : [])) ?? []
+  const queries = useAnalyses(frameIds)
+  const analyses = new Map<string, Analysis>()
+  queries.forEach((q, i) => q.data && analyses.set(frameIds[i]!, q.data))
+  const analysesPending = queries.some((q) => q.isPending)
+
+  if (isError) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+        <p>{th.loadError}</p>
+        <Button size="sm" variant="outline" onClick={refetch}>
+          {t.common.retry}
+        </Button>
       </div>
+    )
+  }
+  if (isPending || !sit) {
+    return (
+      <div className="flex flex-col gap-4 p-6">
+        <Skeleton className="h-10 w-80" />
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-32" />)}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    )
+  }
+
+  const loaded = [...analyses.values()]
+  const overall = maxLevel(loaded.flatMap((a) => (a.brief ? [a.brief.level] : [])))
+  const watched = watchedVehicles(loaded)
+  const top = [...watched].sort((a, b) => b.score - a.score).slice(0, WATCH_LIMIT)
+  const closing = watched.filter((v) => v.closing)
+  const etas = closing.flatMap((v) => (v.etaMin != null ? [v.etaMin] : []))
+  const official = sit.reportsRecent.filter((r) => r.source === 'official').length
+  const delta = sit.activeTracks - sit.activeTracksBefore
+  const options: number[] = []
+  for (let m = bounds.start; m <= bounds.end; m += SERIES_BIN_MIN) options.push(m)
+  const setNow = (m: number | null) => setParams(m == null || m === bounds.end ? {} : { t: hhmm(m) }, { replace: true })
+
+  return (
+    <div className="mx-auto flex max-w-[1600px] flex-col gap-5 p-6">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">{th.title}</h1>
+          <p className="text-sm text-muted-foreground">{th.subtitle(hhmm(now))}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            {th.overall}
+            {overall ? <RiskBadge level={overall} size="lg" /> : <Skeleton className="h-7 w-16" />}
+          </span>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            {th.asOf}
+            <select
+              value={now}
+              onChange={(e) => setNow(Number(e.target.value))}
+              className="h-8 rounded-md border bg-background px-2 font-mono text-sm text-foreground [color-scheme:dark]"
+            >
+              {options.map((m) => (
+                <option key={m} value={m}>
+                  {hhmm(m)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button size="sm" variant="outline" disabled={now === bounds.end} onClick={() => setNow(null)}>
+            {th.latest}
+          </Button>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <KpiTile icon={Activity} accent="text-emerald-400" label={th.kpi.tracks} value={sit.activeTracks} detail={th.kpi.tracksTrend(delta)} note={th.kpi.tracksTotal(sit.tracksSoFar)} />
+        <KpiTile
+          icon={Navigation}
+          accent="text-orange-300"
+          label={th.kpi.closing}
+          value={analysesPending && loaded.length === 0 ? '…' : closing.length}
+          detail={th.kpi.closingEta(etas.length ? Math.min(...etas) : null)}
+          note={th.kpi.closingNote}
+        />
+        <KpiTile icon={RadioTower} accent="text-sky-400" label={th.kpi.reports} value={sit.reportsRecent.length} detail={th.kpi.reportsSplit(official, sit.reportsRecent.length - official)} note={th.kpi.reportsTotal(sit.reportsSoFar)} />
+        <KpiTile
+          icon={Camera}
+          accent="text-sky-300"
+          label={th.kpi.frames}
+          value={sit.framesSoFar}
+          unit={`/ ${sit.framesTotal}`}
+          detail={sit.lastFrame ? th.kpi.framesLast(sit.lastFrame.capture_time, sit.lastFrame.zone ? placeName(sit.lastFrame.zone) : '—') : th.kpi.framesNone}
+        />
+      </div>
+
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <section className="flex flex-col gap-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="text-xs font-semibold tracking-widest text-emerald-400">{th.zones.title.toLocaleUpperCase('tr-TR')}</h2>
+            <span className="text-[11px] text-muted-foreground">{th.zones.hint}</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {sit.zones.map((z) => (
+              <ZoneStatusCard
+                key={z.zone}
+                state={z}
+                now={now}
+                analysis={z.frame ? analyses.get(z.frame.image_id) : undefined}
+                isPending={analysesPending}
+              />
+            ))}
+          </div>
+        </section>
+        <div className="flex flex-col gap-5">
+          <VehicleWatchList vehicles={top} isPending={analysesPending} />
+          <RecentReports reports={sit.latestReports.slice(0, REPORT_LIMIT)} />
+        </div>
+      </div>
+
+      <ActivityChart series={sit.series} reportMarks={sit.reportMarks} start={sit.start} end={sit.end} now={now} />
     </div>
   )
 }
