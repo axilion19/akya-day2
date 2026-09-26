@@ -2,6 +2,7 @@ import { Crosshair } from 'lucide-react'
 import { t } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { PanelToggle } from './PanelToggle'
+import { placeName } from '@/lib/format'
 
 interface Props {
   zones: string[]
@@ -53,7 +54,7 @@ export function ZonePanel({ zones, activeZone, counts, onZone, open, onToggle }:
                   activeZone === z ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-200' : 'border-border/60 bg-background/40',
                 )}
               >
-                <span className="truncate">{z}</span>
+                <span className="truncate">{placeName(z)}</span>
                 {c && (
                   <span className="shrink-0 font-mono text-[10px] text-muted-foreground" title={`${fm.activeTracks(c.tracks)} · ${fm.reportsSoFar(c.reports)}`}>
                     <span className="text-emerald-400">{c.tracks}</span>/<span className="text-sky-400">{c.reports}</span>

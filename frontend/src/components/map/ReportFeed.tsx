@@ -2,7 +2,7 @@ import { MapPin } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import type { MapReport } from '@/api/types'
 import { t } from '@/i18n'
-import { formatCoord } from '@/lib/format'
+import { formatCoord, placeName } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { PanelToggle } from './PanelToggle'
 import { SourceBadge } from './SourceBadge'
@@ -42,8 +42,8 @@ export function ReportFeed({ reports, minute, selectedId, onSelect, open, onTogg
             const fresh = minute - r.time_min <= FRESH_MIN
             const where = r.zone
               ? r.zone_named
-                ? r.zone
-                : fm.nearZone(r.zone)
+                ? placeName(r.zone)
+                : fm.nearZone(placeName(r.zone))
               : r.location
                 ? `${formatCoord(r.location.lat, 4)}, ${formatCoord(r.location.lon, 4)}`
                 : fm.noLocation

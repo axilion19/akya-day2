@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { t } from '@/i18n'
 import { hhmm } from '@/lib/fieldMap'
 import { cn } from '@/lib/utils'
+import { placeName } from '@/lib/format'
 
 export interface ImageFilter {
   from: number // minute of day, inclusive
@@ -88,7 +89,7 @@ export function ImageFilters({ filter, bounds, zoneCounts, shown, total, onChang
               onClick={() => toggleZone(zone)}
               className={cn('font-normal', on ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-200' : 'text-muted-foreground')}
             >
-              {zone}
+              {placeName(zone)}
               <span className="font-mono text-[10px] opacity-70">{count}</span>
             </Button>
           )

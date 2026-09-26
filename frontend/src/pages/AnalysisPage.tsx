@@ -13,6 +13,7 @@ import { useImages } from '@/hooks/useImages'
 import { usePlayback } from '@/hooks/usePlayback'
 import { t } from '@/i18n'
 import { SelectionProvider } from '@/lib/selection'
+import { placeName } from '@/lib/format'
 
 export function AnalysisPage() {
   const { imageId = '' } = useParams()
@@ -51,13 +52,13 @@ export function AnalysisPage() {
               >
                 {images.map((m) => (
                   <option key={m.image_id} value={m.image_id}>
-                    {`${m.image_id} · ${m.zone ?? '—'} · ${m.capture_time}`}
+                    {`${m.image_id} · ${m.zone ? placeName(m.zone) : '—'} · ${m.capture_time}`}
                   </option>
                 ))}
               </select>
             </label>
             <span className="text-sm text-muted-foreground">
-              {t.analysis.zone}: <span className="text-foreground">{image.zone ?? '—'}</span>
+              {t.analysis.zone}: <span className="text-foreground">{image.zone ? placeName(image.zone) : '—'}</span>
             </span>
             <span className="text-sm text-muted-foreground">
               {t.analysis.captured}: <span className="font-mono text-foreground">{image.capture_time}</span>
@@ -69,7 +70,7 @@ export function AnalysisPage() {
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-2 lg:sticky lg:top-4">
-            <SceneStage title={`${image.image_id} · ${image.zone ?? ''}`} status={status}>
+            <SceneStage title={`${image.image_id} · ${image.zone ? placeName(image.zone) : ''}`} status={status}>
               <StepScene key={current ?? 'idle'} analysis={analysis} step={current} />
             </SceneStage>
             <p className="text-xs text-muted-foreground">{t.playback.hint}</p>

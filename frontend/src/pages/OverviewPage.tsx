@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useImages } from '@/hooks/useImages'
 import { t } from '@/i18n'
 import { hhmm } from '@/lib/fieldMap'
+import { placeName } from '@/lib/format'
 
 const NO_ZONE = '—'
 
@@ -47,7 +48,7 @@ export function OverviewPage() {
   const zoneCounts = useMemo(() => {
     const counts = new Map<string, number>()
     for (const m of images) counts.set(m.zone ?? NO_ZONE, (counts.get(m.zone ?? NO_ZONE) ?? 0) + 1)
-    return [...counts].map(([zone, count]) => ({ zone, count })).sort((a, b) => a.zone.localeCompare(b.zone, 'tr'))
+    return [...counts].map(([zone, count]) => ({ zone, count })).sort((a, b) => placeName(a.zone).localeCompare(placeName(b.zone), 'tr'))
   }, [images])
 
   const shown = images.filter(
@@ -94,7 +95,7 @@ export function OverviewPage() {
             <img src={imageUrl(m.image_id)} alt={m.image_id} loading="lazy" className="aspect-video w-full object-cover opacity-90 group-hover:opacity-100" />
             <div className="flex items-center justify-between px-3 py-2 text-xs">
               <span className="font-mono">{m.image_id}</span>
-              <span className="text-muted-foreground">{`${m.zone ?? NO_ZONE} · ${m.capture_time}`}</span>
+              <span className="text-muted-foreground">{`${m.zone ? placeName(m.zone) : NO_ZONE} · ${m.capture_time}`}</span>
             </div>
           </Link>
         ))}

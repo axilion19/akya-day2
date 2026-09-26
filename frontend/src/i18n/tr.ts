@@ -251,6 +251,18 @@ export const tr = {
       analyze: 'Analiz et',
     },
   },
+  // Display names for the organizer's ASCII place names (data and API keep the ASCII form).
+  places: {
+    'Merkez Us': 'Merkez Üs',
+    'Kuzey Yolu': 'Kuzey Yolu',
+    'Kuzeydogu Kavsagi': 'Kuzeydoğu Kavşağı',
+    'Dogu Yolu': 'Doğu Yolu',
+    'Guneydogu Yerlesimi': 'Güneydoğu Yerleşimi',
+    'Guney Kapisi Yaklasimi': 'Güney Kapısı Yaklaşımı',
+    'Guneybati Yolu': 'Güneybatı Yolu',
+    'Bati Yerlesimi': 'Batı Yerleşimi',
+    'Kuzeybati Yolu': 'Kuzeybatı Yolu',
+  } as Record<string, string>,
   common: { retry: 'Tekrar dene', empty: 'Veri yok', raw: 'Ham veri' },
 } as const
 

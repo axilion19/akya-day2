@@ -1,4 +1,9 @@
 // Display formatting only. No domain math here.
+import { t } from '@/i18n'
+
+/** Turkish display name for a zone/base name from the data; unknown names pass through. */
+export const placeName = (name: string): string => t.places[name] ?? name
+
 const trNumber = (value: number, digits: number) =>
   value.toLocaleString('tr-TR', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 

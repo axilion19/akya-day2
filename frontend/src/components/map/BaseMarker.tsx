@@ -1,5 +1,6 @@
 import type { LatLon } from '@/api/types'
 import { formatCoord } from '@/lib/format'
+import { placeName } from '@/lib/format'
 
 interface Props {
   name: string
@@ -23,7 +24,7 @@ export function BaseMarker({ name, position, mpp }: Props) {
         vectorEffect="non-scaling-stroke"
       />
       <text y={-22 * mpp} textAnchor="middle" fontSize={12 * mpp} className="fill-emerald-300 font-semibold">
-        {name}
+        {placeName(name)}
       </text>
       <text y={30 * mpp} textAnchor="middle" fontSize={9 * mpp} className="fill-emerald-500/80 font-mono">
         {`${formatCoord(position.lat)}, ${formatCoord(position.lon)}`}

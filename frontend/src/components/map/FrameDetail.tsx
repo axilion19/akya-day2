@@ -5,7 +5,7 @@ import type { ImageMeta } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { t } from '@/i18n'
-import { formatCoord } from '@/lib/format'
+import { formatCoord, placeName } from '@/lib/format'
 
 interface Props {
   frame: ImageMeta
@@ -60,7 +60,7 @@ export function FrameDetail({ frame, trackCount, onAnalyze, onClose }: Props) {
       </div>
       <dl className="flex flex-col gap-1.5">
         <Row label={ft.captured} value={frame.capture_time} />
-        <Row label={ft.zone} value={frame.zone ?? '—'} />
+        <Row label={ft.zone} value={frame.zone ? placeName(frame.zone) : '—'} />
         {center && <Row label={ft.center} value={`${formatCoord(center.lat)}, ${formatCoord(center.lon)}`} />}
         <Row label={ft.size} value={`${frame.width_px}×${frame.height_px}`} />
         <Row label={ft.tracks} value={String(trackCount)} />
