@@ -1,4 +1,4 @@
-import { type Pt, type Sample, TRACK_LINGER_MIN, pathAt, smoothPath, trailAt } from '@/lib/fieldMap'
+import { type Pt, type Sample, TRACK_LINGER_MIN, pathAt, toPoints, trailAt } from '@/lib/fieldMap'
 import { cn } from '@/lib/utils'
 
 export interface TrackMark {
@@ -58,14 +58,14 @@ export function TrackLayer({ tracks, minute, mpp, showAll, selectedId, onSelect 
       {drawn.map(({ id, path, route, opacity, head }) => {
         const selected = id === selectedId
         const end = path[path.length - 1]
-        const hit = smoothPath(route ?? path)
+        const hit = toPoints(route ?? path)
         return (
           <g key={id} className="group cursor-pointer" opacity={opacity} onClick={() => onSelect(id)}>
             <title>{id}</title>
-            <path d={hit} fill="none" stroke="transparent" strokeWidth={10} vectorEffect="non-scaling-stroke" />
+            <polyline points={hit} fill="none" stroke="transparent" strokeWidth={10} vectorEffect="non-scaling-stroke" />
             {route && (
-              <path
-                d={smoothPath(route)}
+              <polyline
+                points={toPoints(route)}
                 fill="none"
                 strokeLinejoin="round"
                 strokeLinecap="round"
@@ -75,8 +75,8 @@ export function TrackLayer({ tracks, minute, mpp, showAll, selectedId, onSelect 
               />
             )}
             {path.length > 0 && (
-              <path
-                d={smoothPath(path)}
+              <polyline
+                points={toPoints(path)}
                 fill="none"
                 strokeLinejoin="round"
                 strokeLinecap="round"

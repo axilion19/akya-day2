@@ -1,6 +1,6 @@
 import type { WatchLevel } from '@/api/types'
 import type { TrackMark } from '@/components/map/TrackLayer'
-import { pathAt, smoothPath, trailAt } from '@/lib/fieldMap'
+import { pathAt, toPoints, trailAt } from '@/lib/fieldMap'
 import { hasTypeIcon } from '@/lib/vehicleTypes'
 import { VehicleTypeIcon } from './VehicleTypeIcon'
 import { RISK_STYLES } from '@/lib/risk'
@@ -64,8 +64,8 @@ export function VehicleLayer({ tracks, minute, mpp, levels, focus, types, select
           <g key={id} className="cursor-pointer" onClick={() => onSelect(id)}>
             <title>{`${id} · ${level}`}</title>
             {path.length > 1 && (
-              <path
-                d={smoothPath(path)}
+              <polyline
+                points={toPoints(path)}
                 fill="none"
                 stroke={color}
                 strokeOpacity={selected ? 0.9 : 0.7}

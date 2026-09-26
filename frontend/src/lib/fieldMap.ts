@@ -73,35 +73,3 @@ export function trailAt(samples: Sample[], minute: number, windowMin: number): P
   const k = (since - a.t) / (b.t - a.t || 1)
   return [{ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k }, ...path.slice(1)]
 }
-
-/** SVG path through `pts` as a smooth curve. Each sample's tangent follows its neighbours
- *  (Catmull-Rom direction) but its handles are at most a third of the shorter adjacent segment,
- *  and the ends have none: the curve passes through every sample and never overshoots one, so
- *  a trail always ends exactly at the vehicle. */
-export function smoothPath(pts: Pt[]): string {
-  const f = (v: number) => v.toFixed(1)
-  const first = pts[0]
-  if (!first) return ''
-  const dist = (a: Pt, b: Pt) => Math.hypot(b.x - a.x, b.y - a.y)
-  // Unit tangent and handle length per sample (zero at both ends and at repeated samples).
-  const handles = pts.map((p, i) => {
-    const prev = pts[i - 1]
-    const next = pts[i + 1]
-    if (!prev || !next) return { x: 0, y: 0 }
-    const dPrev = dist(prev, p)
-    const dNext = dist(p, next)
-    const chord = dist(prev, next)
-    if (dPrev === 0 || dNext === 0 || chord === 0) return { x: 0, y: 0 }
-    const k = Math.min(dPrev, dNext) / 3 / chord
-    return { x: (next.x - prev.x) * k, y: (next.y - prev.y) * k }
-  })
-  let d = `M${f(first.x)},${f(first.y)}`
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p1 = pts[i] as Pt
-    const p2 = pts[i + 1] as Pt
-    const h1 = handles[i] as Pt
-    const h2 = handles[i + 1] as Pt
-    d += ` C${f(p1.x + h1.x)},${f(p1.y + h1.y)} ${f(p2.x - h2.x)},${f(p2.y - h2.y)} ${f(p2.x)},${f(p2.y)}`
-  }
-  return d
-}
