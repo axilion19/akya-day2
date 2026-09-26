@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: sentinel-backend
+Version: 0.1.0
+Summary: SENTINEL: field-report-aware base-security risk agent
+Requires-Python: <3.13,>=3.12
+Requires-Dist: fastapi>=0.141.1
+Requires-Dist: numpy>=2.4.6
+Requires-Dist: pydantic>=2.13.5
+Requires-Dist: pydantic-settings>=2.15.0
+Requires-Dist: scipy>=1.17.1
+Requires-Dist: uvicorn[standard]>=0.54.0
+Provides-Extra: detector
+Requires-Dist: ultralytics>=8.4.163; extra == "detector"
+Requires-Dist: torch>=2.7; extra == "detector"
+Requires-Dist: torchvision>=0.22; extra == "detector"
