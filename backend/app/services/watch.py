@@ -230,7 +230,8 @@ def vehicle_row(
     long_stops = [
         s
         for s in motion.stops
-        if s.duration_min >= LONG_STOP_MIN and s.distance_to_base_m <= NEAR_BASE_M
+        if s.duration_min >= tuning.rubric.long_stop_min
+        and s.distance_to_base_m <= tuning.rubric.stop_near_base_m
     ]
     row = VehicleRow(
         track_id=track.track_id,

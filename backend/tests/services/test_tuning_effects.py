@@ -85,3 +85,46 @@ def test_track_rubric_uses_the_tuning(golden_repo: Repository) -> None:
     assert before.score - after.score == next(
         f.points for f in before.factors if f.name == "heading_to_base"
     )
+
+
+def _stop_track(stop_min: int) -> list[TrackPoint]:
+    """Drives 2 km east of BASE, stops `stop_min` minutes, drives on; 5-minute samples."""
+    east = [0, 1500, 3000] + [3000] * (stop_min // 5) + [4500, 6000]
+    return [
+        TrackPoint(
+            time=f"{(600 + i * 5) // 60:02d}:{(600 + i * 5) % 60:02d}",
+            time_min=600 + i * 5,
+            position=offset_m(BASE, e, 0),
+        )
+        for i, e in enumerate(east)
+    ]
+
+
+def test_row_long_stop_count_follows_the_tuned_stop_length(golden_repo: Repository) -> None:
+    from app.domain.track import Track
+    from app.services.watch import vehicle_row
+
+    points = _stop_track(15)
+    track = Track(track_id="T9999", points=points)
+
+    def row(tuning: object) -> object:
+        return vehicle_row(
+            track,
+            points[-1].time_min,
+            BASE,
+            golden_repo.scene.zones,
+            stop_speed_ms=1.0,
+            zone_radius_m=2000,
+            prev_sector=None,
+            registry_level="LOW",
+            pending_level=None,
+            notes_count=0,
+            lang="en",
+            tuning=tuning,  # type: ignore[arg-type]
+        )
+
+    assert row(DEFAULT_TUNING).long_stops_within_6km == 1  # type: ignore[attr-defined]
+    longer = DEFAULT_TUNING.model_copy(
+        update={"rubric": DEFAULT_TUNING.rubric.model_copy(update={"long_stop_min": 30})}
+    )
+    assert row(longer).long_stops_within_6km == 0  # type: ignore[attr-defined]

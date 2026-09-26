@@ -108,3 +108,9 @@ def test_preview_renders_or_lists_problems(settings: Settings) -> None:
         PromptPreviewRequest(name="watcher", text="Hi {{nope}}", tuning=DEFAULT_TUNING), settings
     )
     assert bad.rendered is None and "nope" in bad.unknown and "watcher_id" in bad.missing
+
+
+def test_out_of_range_file_falls_back_with_warning(store: TuningStore) -> None:
+    store.path.write_text(json.dumps({"rubric": {"level_step": 0}}), encoding="utf-8")
+    tuning, warning = store.load()
+    assert tuning == DEFAULT_TUNING and warning is not None

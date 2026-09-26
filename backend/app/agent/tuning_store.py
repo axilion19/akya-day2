@@ -64,12 +64,19 @@ class TuningStore:
             raw = json.loads(self.path.read_text(encoding="utf-8"))
             if not isinstance(raw, dict):
                 raise ValueError("override file is not a JSON object")
-            return apply_overrides(raw), None
+            tuning = apply_overrides(raw)
         except (OSError, ValueError, ValidationError) as exc:
             logger.warning(
                 "admin overrides ignored", extra={"path": str(self.path), "error": str(exc)}
             )
             return DEFAULT_TUNING, f"{self.path.name} ignored: {type(exc).__name__}"
+        # Values saved under older rules can load but still break a run (e.g. level_step 0).
+        if problems := tuning_problems(tuning):
+            logger.warning(
+                "admin overrides ignored", extra={"path": str(self.path), "problems": problems}
+            )
+            return DEFAULT_TUNING, f"{self.path.name} ignored: invalid values ({problems[0]})"
+        return tuning, None
 
     def save(self, tuning: AgentTuning) -> None:
         """Validate and persist the diff from the defaults; the defaults remove the file."""
