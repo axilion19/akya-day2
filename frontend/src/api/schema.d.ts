@@ -304,10 +304,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/tuning": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tuning View
+         * @description Defaults, current values, overridden paths and prompt texts.
+         */
+        get: operations["get_tuning_view_api_admin_tuning_get"];
+        /**
+         * Put Tuning
+         * @description Validate and save; applies to the next analysis and the next watch run.
+         */
+        put: operations["put_tuning_api_admin_tuning_put"];
+        post?: never;
+        /**
+         * Reset Tuning
+         * @description Back to the defaults.
+         */
+        delete: operations["reset_tuning_api_admin_tuning_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/prompts/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Prompt Preview
+         * @description Render a prompt text with sample scene values and the given tuning.
+         */
+        post: operations["post_prompt_preview_api_admin_prompts_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AgentKnobs
+         * @description Agent settings; names match `Settings`, None = use the Settings value.
+         */
+        AgentKnobs: {
+            /** Watcher Max Tool Calls */
+            watcher_max_tool_calls: number | null;
+            /** Supervisor Max Tool Calls */
+            supervisor_max_tool_calls: number | null;
+            /** Watcher Spot Checks */
+            watcher_spot_checks: number | null;
+            /** Watcher Reasoning Effort */
+            watcher_reasoning_effort: ("low" | "high" | "max") | null;
+            /** Supervisor Reasoning Effort */
+            supervisor_reasoning_effort: ("low" | "high" | "max") | null;
+            /** Brief Language */
+            brief_language: ("tr" | "en") | null;
+        };
         /**
          * AgentTraceEvent
          * @description Everything one agent turn saw and did: prompts, each LLM call (with the model's reasoning),
@@ -344,6 +410,19 @@ export interface components {
             generated_by: "llm" | "fallback";
             /** Duration Ms */
             duration_ms: number;
+        };
+        /**
+         * AgentTuning
+         * @description Everything the admin can tune.
+         */
+        AgentTuning: {
+            behavior: components["schemas"]["BehaviorTuning"];
+            groups: components["schemas"]["GroupTuning"];
+            rubric: components["schemas"]["RubricTuning"];
+            ceiling: components["schemas"]["CeilingTuning"];
+            judgment: components["schemas"]["JudgmentTuning"];
+            agents: components["schemas"]["AgentKnobs"];
+            prompts: components["schemas"]["PromptOverrides"];
         };
         /**
          * Analysis
@@ -415,6 +494,26 @@ export interface components {
             position: components["schemas"]["LatLon"];
         };
         /**
+         * BehaviorTuning
+         * @description Route classification thresholds (services/behavior.behavior_class). Meters, degrees.
+         */
+        BehaviorTuning: {
+            /** Parked Max Path M */
+            parked_max_path_m: number;
+            /** Leaving Start M */
+            leaving_start_m: number;
+            /** Leaving Gain M */
+            leaving_gain_m: number;
+            /** Loop Sweep Deg */
+            loop_sweep_deg: number;
+            /** Orbit Min Path M */
+            orbit_min_path_m: number;
+            /** Orbit Max Range M */
+            orbit_max_range_m: number;
+            /** Approach Gain M */
+            approach_gain_m: number;
+        };
+        /**
          * Brief
          * @description Operator-facing risk brief for one frame.
          */
@@ -448,6 +547,28 @@ export interface components {
              * @enum {string}
              */
             generated_by: "llm" | "fallback";
+        };
+        /**
+         * CeilingTuning
+         * @description Level ceiling rules (services/risk.level_ceiling). Meters, degrees, m/s, minutes.
+         */
+        CeilingTuning: {
+            /** At Base M */
+            at_base_m: number;
+            /** Pattern High M */
+            pattern_high_m: number;
+            /** Approach Heading Deg */
+            approach_heading_deg: number;
+            /** Approach High M */
+            approach_high_m: number;
+            /** Approach High Eta Min */
+            approach_high_eta_min: number;
+            /** Approach Medium Ms */
+            approach_medium_ms: number;
+            /** Approach Medium M */
+            approach_medium_m: number;
+            /** Approach Medium Eta Min */
+            approach_medium_eta_min: number;
         };
         /**
          * ComponentStatus
@@ -487,6 +608,33 @@ export interface components {
             distance_to_base_m: number | null;
             /** Bearing From Base Deg */
             bearing_from_base_deg: number | null;
+        };
+        /**
+         * EnvKnobs
+         * @description Settings values used when an `AgentKnobs` field is None.
+         */
+        EnvKnobs: {
+            /** Watcher Max Tool Calls */
+            watcher_max_tool_calls: number;
+            /** Supervisor Max Tool Calls */
+            supervisor_max_tool_calls: number;
+            /** Watcher Spot Checks */
+            watcher_spot_checks: number;
+            /**
+             * Watcher Reasoning Effort
+             * @enum {string}
+             */
+            watcher_reasoning_effort: "low" | "high" | "max";
+            /**
+             * Supervisor Reasoning Effort
+             * @enum {string}
+             */
+            supervisor_reasoning_effort: "low" | "high" | "max";
+            /**
+             * Brief Language
+             * @enum {string}
+             */
+            brief_language: "tr" | "en";
         };
         /** FrameAnalyzedEvent */
         FrameAnalyzedEvent: {
@@ -542,6 +690,18 @@ export interface components {
             /** Evidence Ids */
             evidence_ids: string[];
         };
+        /**
+         * GroupTuning
+         * @description Moving-together thresholds (services/behavior.moving_groups). Meters.
+         */
+        GroupTuning: {
+            /** Large Group */
+            large_group: number;
+            /** Group Radius M */
+            group_radius_m: number;
+            /** Group Min Move M */
+            group_min_move_m: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -585,6 +745,14 @@ export interface components {
             };
             /** Zone */
             zone: string | null;
+        };
+        /**
+         * JudgmentTuning
+         * @description Which watch rows go to the LLM in full (agent/watch/watcher.needs_judgment).
+         */
+        JudgmentTuning: {
+            /** Closing Min M Per Min */
+            closing_min_m_per_min: number;
         };
         /**
          * LatLon
@@ -734,6 +902,72 @@ export interface components {
             alert: components["schemas"]["OperatorAlert"];
         };
         /**
+         * PatternPoints
+         * @description Rubric points for the danger patterns.
+         */
+        PatternPoints: {
+            /** Loops Around Base */
+            loops_around_base: number;
+            /** Fixed Range Orbit */
+            fixed_range_orbit: number;
+        };
+        /**
+         * PromptOverrides
+         * @description Admin prompt texts; None = the versioned .md file.
+         */
+        PromptOverrides: {
+            /** Watcher */
+            watcher: string | null;
+            /** Supervisor */
+            supervisor: string | null;
+        };
+        /**
+         * PromptPreview
+         * @description Rendered prompt with sample scene values, or the variable problems.
+         */
+        PromptPreview: {
+            /** Rendered */
+            rendered: string | null;
+            /** Missing */
+            missing: string[];
+            /** Unknown */
+            unknown: string[];
+        };
+        /**
+         * PromptPreviewRequest
+         * @description POST /api/admin/prompts/preview body.
+         */
+        PromptPreviewRequest: {
+            /**
+             * Name
+             * @enum {string}
+             */
+            name: "watcher" | "supervisor";
+            /** Text */
+            text: string;
+            tuning: components["schemas"]["AgentTuning"];
+        };
+        /**
+         * PromptTexts
+         * @description One text per prompt.
+         */
+        PromptTexts: {
+            /** Watcher */
+            watcher: string;
+            /** Supervisor */
+            supervisor: string;
+        };
+        /**
+         * PromptVariables
+         * @description Required `{{variables}}` per prompt.
+         */
+        PromptVariables: {
+            /** Watcher */
+            watcher: string[];
+            /** Supervisor */
+            supervisor: string[];
+        };
+        /**
          * ReportAssessment
          * @description Verdict on one report relative to one frame's own sensor data.
          */
@@ -841,6 +1075,34 @@ export interface components {
             level: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
             /** Factors */
             factors: components["schemas"]["RiskFactor"][];
+        };
+        /**
+         * RubricTuning
+         * @description Baseline risk rubric (services/risk). Meters, m/min, degrees, minutes, points.
+         */
+        RubricTuning: {
+            /** Distance Tiers */
+            distance_tiers: components["schemas"]["Tier"][];
+            /** Approach Rate Tiers */
+            approach_rate_tiers: components["schemas"]["Tier"][];
+            /** Heading Points */
+            heading_points: number;
+            /** Heading Tolerance Deg */
+            heading_tolerance_deg: number;
+            /** Long Stop Min */
+            long_stop_min: number;
+            /** Stop Near Base M */
+            stop_near_base_m: number;
+            /** Stop Points First */
+            stop_points_first: number;
+            /** Stop Points Extra */
+            stop_points_extra: number;
+            pattern_points: components["schemas"]["PatternPoints"];
+            /** Group Points */
+            group_points: number;
+            type_points: components["schemas"]["TypePoints"];
+            /** Level Step */
+            level_step: number;
         };
         /**
          * Scene
@@ -1020,6 +1282,16 @@ export interface components {
             };
         };
         /**
+         * Tier
+         * @description One rubric tier: `points` when the value passes `limit`.
+         */
+        Tier: {
+            /** Limit */
+            limit: number;
+            /** Points */
+            points: number;
+        };
+        /**
          * TokenUsage
          * @description LLM token counters for one analysis.
          */
@@ -1139,6 +1411,35 @@ export interface components {
             /** Tick */
             tick: string;
             tracker: components["schemas"]["TrackerState"];
+        };
+        /**
+         * TuningView
+         * @description GET/PUT/DELETE /api/admin/tuning response.
+         */
+        TuningView: {
+            defaults: components["schemas"]["AgentTuning"];
+            current: components["schemas"]["AgentTuning"];
+            /** Overridden */
+            overridden: string[];
+            env_knobs: components["schemas"]["EnvKnobs"];
+            prompt_defaults: components["schemas"]["PromptTexts"];
+            prompt_variables: components["schemas"]["PromptVariables"];
+            /** Hash */
+            hash: string;
+            /** Load Warning */
+            load_warning: string | null;
+        };
+        /**
+         * TypePoints
+         * @description Rubric points by detected vehicle type (other types score 0).
+         */
+        TypePoints: {
+            /** Truck */
+            truck: number;
+            /** Bus */
+            bus: number;
+            /** Van */
+            van: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -1809,6 +2110,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MotionProfile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_tuning_view_api_admin_tuning_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TuningView"];
+                };
+            };
+        };
+    };
+    put_tuning_api_admin_tuning_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentTuning"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TuningView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_tuning_api_admin_tuning_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TuningView"];
+                };
+            };
+        };
+    };
+    post_prompt_preview_api_admin_prompts_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromptPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptPreview"];
                 };
             };
             /** @description Validation Error */

@@ -42,3 +42,10 @@ export type VehicleRow = Schemas['VehicleRow']
 export type WatchLevel = VehicleRow['registry_level']
 export type OperatorAlert = Schemas['OperatorAlert']
 export type FrameDetection = Schemas['FrameDetection']
+
+// Admin tuning
+export type AgentTuning = Schemas['AgentTuning']
+export type TuningView = Schemas['TuningView']
+export type PromptPreview = Schemas['PromptPreview']
+export type PromptName = Schemas['PromptPreviewRequest']['name']
+export type Tier = Schemas['Tier']
