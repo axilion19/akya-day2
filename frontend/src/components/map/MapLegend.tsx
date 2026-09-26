@@ -15,7 +15,7 @@ export function MapLegend() {
           {lg.track}
         </span>
         <span className="flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 border border-sky-300 bg-sky-500/40" />
+          <span aria-hidden className="size-2.5 border border-sky-500 bg-sky-500/40" />
           {lg.frame}
         </span>
         <span className="flex items-center gap-1.5">

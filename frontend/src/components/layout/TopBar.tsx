@@ -2,11 +2,11 @@ import { ShieldHalf } from 'lucide-react'
 import { NavLink } from 'react-router'
 import { t } from '@/i18n'
 import { cn } from '@/lib/utils'
-import { StatusIndicator } from './StatusIndicator'
 
 const NAV = [
   { to: '/', label: t.nav.overview, end: true },
   { to: '/map', label: t.nav.map, end: false },
+  { to: '/watch', label: t.nav.watch, end: false },
   { to: '/analysis', label: t.nav.analysis, end: false },
   { to: '/reports', label: t.nav.reports, end: false },
 ] as const
@@ -38,7 +38,6 @@ export function TopBar() {
           ))}
         </nav>
       </div>
-      <StatusIndicator />
     </header>
   )
 }

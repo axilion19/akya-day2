@@ -1,10 +1,12 @@
-import { type Sample, pathAt, toPoints } from '@/lib/fieldMap'
+import { type Sample, pathAt, toPoints, trailAt } from '@/lib/fieldMap'
 import { cn } from '@/lib/utils'
 
 export interface TrackMark {
   id: string
   samples: Sample[]
 }
+
+const TRAIL_MIN = 20
 
 interface Props {
   tracks: TrackMark[]
@@ -14,10 +16,11 @@ interface Props {
   onSelect: (id: string) => void
 }
 
-/** Tracks active at `minute`: the whole path so far plus the vehicle's current position. */
+/** Tracks active at `minute`: the last 20 minutes (the selected one: its whole path so far)
+ *  plus the vehicle's current position. Short trails keep the map readable during playback. */
 export function TrackLayer({ tracks, minute, mpp, selectedId, onSelect }: Props) {
   const drawn = tracks
-    .map((tr) => ({ id: tr.id, path: pathAt(tr.samples, minute) }))
+    .map((tr) => ({ id: tr.id, path: tr.id === selectedId ? pathAt(tr.samples, minute) : trailAt(tr.samples, minute, TRAIL_MIN) }))
     .filter((tr) => tr.path.length > 0)
   // Draw the selected track last so it sits on top.
   drawn.sort((a, b) => Number(a.id === selectedId) - Number(b.id === selectedId))
@@ -46,7 +49,7 @@ export function TrackLayer({ tracks, minute, mpp, selectedId, onSelect }: Props)
               strokeWidth={selected ? 2.5 : 1.25}
               className={cn(
                 'transition-colors',
-                selected ? 'stroke-cyan-300' : 'stroke-emerald-400/45 group-hover:stroke-emerald-300',
+                selected ? 'stroke-cyan-600' : 'stroke-emerald-600/45 group-hover:stroke-emerald-600',
               )}
               vectorEffect="non-scaling-stroke"
             />
@@ -55,7 +58,7 @@ export function TrackLayer({ tracks, minute, mpp, selectedId, onSelect }: Props)
                 cx={head.x}
                 cy={head.y}
                 r={(selected ? 5 : 3) * mpp}
-                className={selected ? 'fill-cyan-300' : 'fill-emerald-300'}
+                className={selected ? 'fill-cyan-700' : 'fill-emerald-700'}
               />
             )}
             {head && selected && (
@@ -63,7 +66,7 @@ export function TrackLayer({ tracks, minute, mpp, selectedId, onSelect }: Props)
                 x={head.x + 8 * mpp}
                 y={head.y - 8 * mpp}
                 fontSize={11 * mpp}
-                className="pointer-events-none fill-cyan-200 font-mono"
+                className="pointer-events-none fill-cyan-700 font-mono"
               >
                 {id}
               </text>

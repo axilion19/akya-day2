@@ -23,7 +23,9 @@ src/
     map/        FieldMapView (Saha Haritası): MapGrid, ZoneLayer, FrameLayer, TrackLayer, ReportLayer,
                 BaseMarker, ZonePanel, ReportFeed, TimeBar, TrackDetail, MapLegend
     reports/    ReportList, ReportVerdictChip, ReportsTable
-  pages/        OverviewPage, FieldMapPage, AnalysisPage, ReportsPage
+    watch/      Watch demo (İzleme): WatchMap, SectorLayer, VehicleLayer, TickBar, SupervisorCard,
+                WatcherCard, TraceView, VehiclePanel
+  pages/        OverviewPage, FieldMapPage, WatchPage, AnalysisPage, ReportsPage
   lib/          risk.ts (level → color/label), format.ts (km, m/s, time), geo.ts (display helpers only)
   i18n/         tr.ts (all user-facing strings), en.ts
   mocks/        img_000860.analysis.json (from AGENT_DESIGN §9) for mock-first development.
@@ -39,11 +41,11 @@ src/
 - Every async view has explicit loading (skeleton), empty and error states. Never a blank panel, never a raw error object.
 - Accessibility basics: buttons are `<Button>`, icons have `aria-label`, color is never the only signal (risk badge = color + text).
 
-## Visual language (ops center, dark)
-- Dark theme by default; shadcn CSS variables in `index.css`. Background near-black slate, cards one step lighter, 1px borders, rounded-lg.
+## Visual language (ops center, day mode)
+- Day mode by default (user decision, 26 Sep): shadcn CSS variables in `index.css` `:root` — soft blue-gray page, off-white cards (deliberately below pure white to cut glare), map surface `bg-map` (`--map`), 1px borders, rounded-lg. The dark palette stays in `.dark` (add `class="dark"` to `<html>` to use it). Pick text/stroke shades that read on white (`-600`/`-700`); overlays on drone photos keep dark labels.
 - Fonts: Inter for UI, JetBrains Mono for coordinates, IDs, times and numbers.
-- Risk colors (single source: `lib/risk.ts`): LOW = emerald, MEDIUM = amber, HIGH = orange, CRITICAL = red (with subtle pulse). Report verdicts: CORROBORATED = emerald, CONTRADICTED = red, UNVERIFIED = zinc, IRRELEVANT = muted/hidden.
-- Accent: cyan for selection/hover and the agent's "active step".
+- Risk colors (single source: `lib/risk.ts`): LOW = emerald, MEDIUM = amber/mustard, HIGH = orange, CRITICAL = red (with subtle pulse). Report verdicts: CORROBORATED = emerald, CONTRADICTED = red, UNVERIFIED = zinc, IRRELEVANT = muted/hidden.
+- Accent: teal-cyan (`primary`) for selection/hover, links and the agent's "active step".
 - Density: information-rich but calm. Prefer small caps labels + large numbers for KPIs. No gradients except the active step glow.
 - Motion: subtle only (fade/slide 150–250 ms). Timeline steps animate in as SSE events arrive; the brief card reveals last.
 
@@ -72,3 +74,11 @@ pnpm build && pnpm preview
 pnpm lint && pnpm typecheck
 make gen-types   # from repo root; exports OpenAPI from the backend app without running a server
 ```
+
+## Watch demo (`/watch`)
+- Replays a recorded multi-agent watch run from `GET /api/watch/recordings/{id}` (no LLM calls on stage). Recordings are JSONL event logs in `backend/recordings/`, made with `make watch-demo SAVE=<name>`.
+- Plays on the same simulated clock and `TimeBar` as the field map (default 15×); the clock sits upper left on both maps. Zone names, image names and the base title are not drawn on maps; a frame shows a short "Görüntü alındı · HH:MM" popup for 3 simulated minutes after capture. The field map draws only the last 20 min of each track (full route for the selected one). Each tick's outputs "stream" during the 5 simulated minutes before the tick (`SCHEDULE` in `lib/watchDemo.ts`): watchers type in parallel, then the supervisor, then its alert; a vehicle's color changes when the watcher that judged it finishes. To keep the map readable, vehicles are dots colored by level; only the vehicles in the latest operator alert show a route (last 45 min, drawn in when the alert is written, `alertFocus`) and only the selected vehicle shows its id and full route. Pausing or scrubbing replays the same state.
+- LLM text is shown short (`concise`, first sentence) with "devamı" to open the full text; every vehicle id (`T0xxx`) in any LLM text is a link (`AgentText` / `LinkedIds`, `useVehicleLink`).
+- `lib/watchDemo.ts` only indexes and schedules events; levels, reasons and alerts are exactly what the agents wrote.
+- Side panel has two tabs. **Baş Denetçi** is the operator view of a real-time caution system: threat level, one-line situation, the alert (urgency, headline, short description, vehicles) and the alert log; nothing else (patterns, level changes and traces are analyst detail). **Gözcüler** holds the watcher cards with their traces.
+- Deep links for the demo script: `/watch?recording=<id>&tick=<1-based>&at=<HH:MM>&vehicle=<track_id>&tab=watchers`.

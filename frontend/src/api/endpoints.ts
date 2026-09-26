@@ -1,6 +1,16 @@
 import type { components } from './schema'
 import { API_BASE_URL, USE_MOCKS, apiGet, apiPost } from './client'
-import type { Analysis, Health, ImageMeta, MapReport, MapTrack, MotionProfile, Scene } from './types'
+import type {
+  Analysis,
+  Health,
+  ImageMeta,
+  MapReport,
+  MapTrack,
+  MotionProfile,
+  Scene,
+  WatchEvent,
+  WatchRecording,
+} from './types'
 
 type AnalysisCreated = components['schemas']['AnalysisCreated']
 
@@ -17,6 +27,10 @@ export const getAnalysis = (analysisId: string) =>
   apiGet<Analysis>(`/api/analyses/${encodeURIComponent(analysisId)}`)
 export const createAnalysis = (imageId: string, forceRefresh = false) =>
   apiPost<AnalysisCreated>('/api/analyses', { image_id: imageId, force_refresh: forceRefresh })
+
+export const getRecordings = () => apiGet<WatchRecording[]>('/api/watch/recordings')
+export const getRecording = (recordingId: string) =>
+  apiGet<WatchEvent[]>(`/api/watch/recordings/${encodeURIComponent(recordingId)}`)
 
 export const imageUrl = (imageId: string): string =>
   USE_MOCKS

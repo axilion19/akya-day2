@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { type Pt, toPoints } from '@/lib/fieldMap'
 import { cn } from '@/lib/utils'
 
@@ -18,6 +19,8 @@ interface Props {
 
 /** Minutes around a capture time during which the frame is shown as "being taken". */
 const LIVE_MIN = 5
+/** Simulated minutes the "image taken" popup stays up after the capture. */
+const POPUP_MIN = 3
 
 /** Drone frame footprints; the one being captured glows, past ones stay dim. Click = analysis. */
 export function FrameLayer({ frames, minute, mpp, onOpen }: Props) {
@@ -29,15 +32,15 @@ export function FrameLayer({ frames, minute, mpp, onOpen }: Props) {
         const s = (live ? 6 : 4) * mpp
         return (
           <g key={f.id} className="group cursor-pointer" onClick={() => onOpen(f.id)}>
-            <title>{`${f.id} · ${f.captureTime}`}</title>
+            <title>{f.captureTime}</title>
             <polygon
               points={toPoints(f.corners)}
               className={
                 live
-                  ? 'fill-sky-400/30 stroke-sky-300'
+                  ? 'fill-sky-400/30 stroke-sky-600'
                   : past
-                    ? 'fill-sky-400/10 stroke-sky-400/50'
-                    : 'fill-none stroke-sky-400/25'
+                    ? 'fill-sky-400/10 stroke-sky-600/50'
+                    : 'fill-none stroke-sky-600/25'
               }
               vectorEffect="non-scaling-stroke"
             />
@@ -48,30 +51,43 @@ export function FrameLayer({ frames, minute, mpp, onOpen }: Props) {
               width={2 * s}
               height={2 * s}
               className={cn(
-                'stroke-sky-300 group-hover:fill-sky-300',
-                live ? 'fill-sky-300' : past ? 'fill-sky-500/40' : 'fill-transparent opacity-50',
+                'stroke-sky-600 group-hover:fill-sky-700',
+                live ? 'fill-sky-700' : past ? 'fill-sky-500/40' : 'fill-transparent opacity-50',
               )}
               vectorEffect="non-scaling-stroke"
             />
             {live && (
-              <circle cx={f.center.x} cy={f.center.y} fill="none" className="stroke-sky-300" vectorEffect="non-scaling-stroke">
+              <circle cx={f.center.x} cy={f.center.y} fill="none" className="stroke-sky-600" vectorEffect="non-scaling-stroke">
                 <animate attributeName="r" from={10 * mpp} to={26 * mpp} dur="1.2s" repeatCount="indefinite" />
                 <animate attributeName="opacity" from="1" to="0" dur="1.2s" repeatCount="indefinite" />
               </circle>
             )}
-            {live && (
-              <text
-                x={f.center.x + 10 * mpp}
-                y={f.center.y + 4 * mpp}
-                fontSize={10 * mpp}
-                className="pointer-events-none fill-sky-200 font-mono"
-              >
-                {`${f.id} · ${f.captureTime}`}
-              </text>
+            {minute >= f.captureMin && minute < f.captureMin + POPUP_MIN && (
+              <FramePopup x={f.center.x} y={f.center.y - 12 * mpp} mpp={mpp} text={t.fieldMap.frameTaken(f.captureTime)} />
             )}
           </g>
         )
       })}
+    </g>
+  )
+}
+
+/** A small callout above a frame, constant size on screen. */
+function FramePopup({ x, y, mpp, text }: { x: number; y: number; mpp: number; text: string }) {
+  const w = (text.length * 6.2 + 18) * mpp
+  const h = 20 * mpp
+  const tip = 5 * mpp
+  return (
+    <g className="pointer-events-none animate-in fade-in duration-300" transform={`translate(${x} ${y})`}>
+      <path
+        d={`M ${-w / 2} ${-h - tip} h ${w} v ${h} h ${-(w / 2 - tip)} l ${-tip} ${tip} l ${-tip} ${-tip} h ${-(w / 2 - tip)} Z`}
+        className="fill-card stroke-sky-600"
+        strokeWidth={1}
+        vectorEffect="non-scaling-stroke"
+      />
+      <text y={-tip - h / 2 + 3.5 * mpp} textAnchor="middle" fontSize={10.5 * mpp} className="fill-sky-800 font-medium">
+        {text}
+      </text>
     </g>
   )
 }

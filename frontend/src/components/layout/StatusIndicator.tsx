@@ -33,7 +33,7 @@ export function StatusIndicator() {
   return (
     <div className="flex items-center gap-4">
       {USE_MOCKS && (
-        <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">
+        <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs text-amber-700">
           {t.status.mock}
         </span>
       )}

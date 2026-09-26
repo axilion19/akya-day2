@@ -4,6 +4,7 @@ import { AnalysisPage } from '@/pages/AnalysisPage'
 import { FieldMapPage } from '@/pages/FieldMapPage'
 import { OverviewPage } from '@/pages/OverviewPage'
 import { ReportsPage } from '@/pages/ReportsPage'
+import { WatchPage } from '@/pages/WatchPage'
 
 export const router = createBrowserRouter([
   {
@@ -11,6 +12,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <OverviewPage /> },
       { path: 'map', element: <FieldMapPage /> },
+      { path: 'watch', element: <WatchPage /> },
       { path: 'analysis', element: <Navigate to="/analysis/img_000860" replace /> },
       { path: 'analysis/:imageId', element: <AnalysisPage /> },
       { path: 'reports', element: <ReportsPage /> },

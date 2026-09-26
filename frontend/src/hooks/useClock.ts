@@ -5,11 +5,11 @@ export type ClockSpeed = (typeof CLOCK_SPEEDS)[number]
 
 /** Simulated day clock in minutes. `speed` = simulated seconds per real second.
  *  Space plays/pauses, arrow keys step 5 minutes. */
-export function useClock(start: number, end: number) {
-  const [minute, setMinute] = useState(start)
+export function useClock(start: number, end: number, initialMinute = start, initialSpeed: ClockSpeed = 60) {
+  const [minute, setMinute] = useState(initialMinute)
   const [playing, setPlaying] = useState(false)
-  const [speed, setSpeed] = useState<ClockSpeed>(60)
-  const minuteRef = useRef(start)
+  const [speed, setSpeed] = useState<ClockSpeed>(initialSpeed)
+  const minuteRef = useRef(initialMinute)
 
   const seek = useCallback(
     (m: number) => {

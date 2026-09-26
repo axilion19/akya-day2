@@ -41,28 +41,28 @@ export function PlacementScene({ analysis }: { analysis: Analysis }) {
           </pattern>
         </defs>
         <rect width={W} height={H} fill="url(#grid)" />
-        <line x1={bx} y1={by} x2={fx} y2={fy} stroke="#f87171" strokeWidth={2} strokeDasharray="8 6" />
-        <rect x={bx - 11} y={by - 11} width={22} height={22} transform={`rotate(45 ${bx} ${by})`} fill="none" stroke="#f87171" strokeWidth={3} />
-        <text x={bx + 18} y={by + 6} fill="#f87171" fontSize={18}>{t.scene.base}</text>
+        <line x1={bx} y1={by} x2={fx} y2={fy} stroke="#dc2626" strokeWidth={2} strokeDasharray="8 6" />
+        <rect x={bx - 11} y={by - 11} width={22} height={22} transform={`rotate(45 ${bx} ${by})`} fill="none" stroke="#dc2626" strokeWidth={3} />
+        <text x={bx + 18} y={by + 6} fill="#dc2626" fontSize={18}>{t.scene.base}</text>
         <image href={imageUrl(image.image_id)} x={fx - FRAME_W / 2} y={fy - FRAME_H / 2} width={FRAME_W} height={FRAME_H} preserveAspectRatio="none" />
-        <rect x={fx - FRAME_W / 2} y={fy - FRAME_H / 2} width={FRAME_W} height={FRAME_H} fill="none" stroke="#fbbf24" strokeWidth={3} />
+        <rect x={fx - FRAME_W / 2} y={fy - FRAME_H / 2} width={FRAME_W} height={FRAME_H} fill="none" stroke="#d97706" strokeWidth={3} />
         {analysis.detections.map((d) => (
-          <circle key={d.id} cx={fx - FRAME_W / 2 + (d.center_px[0] / image.width_px) * FRAME_W} cy={fy - FRAME_H / 2 + (d.center_px[1] / image.height_px) * FRAME_H} r={5} fill="#fbbf24" stroke="#0b1220" strokeWidth={2} />
+          <circle key={d.id} cx={fx - FRAME_W / 2 + (d.center_px[0] / image.width_px) * FRAME_W} cy={fy - FRAME_H / 2 + (d.center_px[1] / image.height_px) * FRAME_H} r={5} fill="#d97706" stroke="#ffffff" strokeWidth={2} />
         ))}
         <g transform={`translate(${W - 50} 40)`}>
-          <line x1={0} y1={50} x2={0} y2={0} stroke="#e4e4e7" strokeWidth={3} />
-          <path d="M -8 12 L 0 0 L 8 12" fill="none" stroke="#e4e4e7" strokeWidth={3} />
-          <text x={12} y={16} fill="#e4e4e7" fontSize={16}>{t.scene.north}</text>
+          <line x1={0} y1={50} x2={0} y2={0} stroke="#3f3f46" strokeWidth={3} />
+          <path d="M -8 12 L 0 0 L 8 12" fill="none" stroke="#3f3f46" strokeWidth={3} />
+          <text x={12} y={16} fill="#3f3f46" fontSize={16}>{t.scene.north}</text>
         </g>
         <g transform={`translate(18 ${H - 200})`}>
           <rect width={170} height={170} rx={6} fill="rgb(0 0 0 / 0.55)" stroke="rgb(255 255 255 / 0.1)" />
           {zonePts.map((z) => {
             const p = inset(z)
-            return <circle key={z.name} cx={p.x} cy={p.y} r={4} fill="#a1a1aa" />
+            return <circle key={z.name} cx={p.x} cy={p.y} r={4} fill="#71717a" />
           })}
-          <circle cx={inset({ x: 0, y: 0 }).x} cy={inset({ x: 0, y: 0 }).y} r={5} fill="#f87171" />
-          <circle cx={inset(rel).x} cy={inset(rel).y} r={5} fill="#fbbf24" />
-          <text x={8} y={162} fill="#a1a1aa" fontSize={11}>{t.scene.zonesInset}</text>
+          <circle cx={inset({ x: 0, y: 0 }).x} cy={inset({ x: 0, y: 0 }).y} r={5} fill="#dc2626" />
+          <circle cx={inset(rel).x} cy={inset(rel).y} r={5} fill="#d97706" />
+          <text x={8} y={162} fill="#71717a" fontSize={11}>{t.scene.zonesInset}</text>
         </g>
       </svg>
       <OverlayLabel x={((fx - FRAME_W / 2) / W) * 100} y={((fy - FRAME_H / 2) / H) * 100 - 1} anchor="bl">

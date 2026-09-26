@@ -55,3 +55,15 @@ export function pathAt(samples: Sample[], minute: number): Pt[] {
 
 export const toPoints = (pts: Pt[]): string =>
   pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+
+/** The last `windowMin` minutes of a track up to `minute` (interpolated at both ends). */
+export function trailAt(samples: Sample[], minute: number, windowMin: number): Pt[] {
+  const since = minute - windowMin
+  const firstIn = samples.findIndex((p) => p.t >= since)
+  const from = firstIn > 0 ? samples.slice(firstIn - 1) : samples
+  const path = pathAt(from, minute)
+  const [a, b] = from
+  if (!a || !b || path.length < 2 || a.t >= since) return path
+  const k = (since - a.t) / (b.t - a.t || 1)
+  return [{ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k }, ...path.slice(1)]
+}

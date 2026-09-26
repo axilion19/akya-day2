@@ -27,7 +27,7 @@ export function ReportFeed({ reports, minute, selectedId, onSelect }: Props) {
   return (
     <section className="flex min-h-0 w-80 flex-col rounded-lg border bg-card/85 backdrop-blur" aria-label={fm.feedTitle}>
       <header className="flex items-center justify-between border-b px-3 py-2">
-        <h2 className="text-xs font-semibold tracking-widest text-emerald-400">{fm.feedTitle.toLocaleUpperCase('tr-TR')}</h2>
+        <h2 className="text-xs font-semibold tracking-widest text-emerald-700">{fm.feedTitle.toLocaleUpperCase('tr-TR')}</h2>
         <span className="font-mono text-xs text-muted-foreground">{reports.length}</span>
       </header>
       {reports.length === 0 ? (
@@ -64,11 +64,11 @@ export function ReportFeed({ reports, minute, selectedId, onSelect }: Props) {
                     <span className="font-mono text-xs text-foreground">{r.time}</span>
                     <SourceBadge source={r.source} />
                     <span className="ml-auto flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground">
-                      {r.location && <MapPin aria-hidden className="size-3 shrink-0 text-cyan-400" />}
+                      {r.location && <MapPin aria-hidden className="size-3 shrink-0 text-cyan-700" />}
                       <span className="truncate">{where}</span>
                     </span>
                   </div>
-                  <p className="font-mono text-[11px] leading-snug text-slate-300">{r.text}</p>
+                  <p className="font-mono text-[11px] leading-snug text-slate-700">{r.text}</p>
                 </button>
               </li>
             )

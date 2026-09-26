@@ -41,6 +41,7 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-map: var(--map);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -61,45 +62,48 @@
   }
 }
 
-/* Light tokens kept for shadcn completeness; the app always renders with `.dark`. */
+/* Day mode (default): soft blue-gray page, off-white cards, calm map tone, teal-cyan accent.
+   Kept below pure white on purpose: long monitoring sessions, less glare. */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: oklch(0.925 0.009 240);
+  --foreground: oklch(0.24 0.02 255);
+  --map: oklch(0.95 0.007 235);
+  --card: oklch(0.97 0.005 240);
+  --card-foreground: oklch(0.24 0.02 255);
+  --popover: oklch(0.97 0.005 240);
+  --popover-foreground: oklch(0.22 0.02 255);
+  --primary: oklch(0.55 0.11 220);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.905 0.01 240);
+  --secondary-foreground: oklch(0.25 0.02 255);
+  --muted: oklch(0.905 0.01 240);
+  --muted-foreground: oklch(0.5 0.02 255);
+  --accent: oklch(0.89 0.025 220);
+  --accent-foreground: oklch(0.25 0.03 240);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --border: oklch(0.85 0.012 240);
+  --input: oklch(0.85 0.012 240);
+  --ring: oklch(0.55 0.11 220);
+  --chart-1: oklch(0.55 0.11 220);
+  --chart-2: oklch(0.6 0.13 160);
+  --chart-3: oklch(0.7 0.15 80);
+  --chart-4: oklch(0.65 0.17 50);
+  --chart-5: oklch(0.577 0.245 27.325);
   --radius: 0.5rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.95 0.006 240);
+  --sidebar-foreground: oklch(0.22 0.02 255);
+  --sidebar-primary: oklch(0.55 0.11 220);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.89 0.025 220);
+  --sidebar-accent-foreground: oklch(0.25 0.03 240);
+  --sidebar-border: oklch(0.85 0.012 240);
+  --sidebar-ring: oklch(0.55 0.11 220);
 }
 
-/* Ops-center dark: near-black slate background, cards one step lighter, cyan accent. */
+/* Ops-center dark (optional: add class="dark" to <html>). */
 .dark {
   --background: oklch(0.155 0.012 255);
+  --map: oklch(0.13 0.012 255);
   --foreground: oklch(0.96 0.005 250);
   --card: oklch(0.2 0.014 255);
   --card-foreground: oklch(0.96 0.005 250);

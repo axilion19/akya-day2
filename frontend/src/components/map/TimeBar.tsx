@@ -45,7 +45,7 @@ export function TimeBar({ start, end, minute, playing, speed, ticks, onToggle, o
 
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card/85 px-3 py-2 backdrop-blur">
-      <Button size="sm" variant="outline" onClick={onToggle} className="w-24 border-emerald-500/50 text-emerald-300">
+      <Button size="sm" variant="outline" onClick={onToggle} className="w-24 border-emerald-500/50 text-emerald-700">
         {playing ? <Pause aria-hidden /> : <Play aria-hidden />}
         {playing ? fm.pause : fm.play}
       </Button>
@@ -57,7 +57,7 @@ export function TimeBar({ start, end, minute, playing, speed, ticks, onToggle, o
             variant={s === speed ? 'secondary' : 'ghost'}
             aria-pressed={s === speed}
             onClick={() => onSpeed(s)}
-            className={cn('font-mono', s === speed && 'text-emerald-300')}
+            className={cn('font-mono', s === speed && 'text-emerald-700')}
           >
             {fm.speed(s)}
           </Button>
@@ -92,7 +92,7 @@ export function TimeBar({ start, end, minute, playing, speed, ticks, onToggle, o
           </span>
         ))}
         <span
-          className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-emerald-200 bg-emerald-400 shadow-[0_0_10px] shadow-emerald-400/60"
+          className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-emerald-500 bg-emerald-400 shadow-[0_0_10px] shadow-emerald-400/60"
           style={{ left: pct(minute) }}
         />
       </div>

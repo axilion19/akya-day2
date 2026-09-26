@@ -8,7 +8,7 @@ export function SourceBadge({ source }: { source: string }) {
     <span
       className={cn(
         'rounded border px-1.5 py-px font-mono text-[10px] tracking-wider',
-        official ? 'border-sky-500/40 bg-sky-500/10 text-sky-300' : 'border-amber-500/40 bg-amber-500/10 text-amber-300',
+        official ? 'border-sky-500/40 bg-sky-500/10 text-sky-700' : 'border-amber-500/40 bg-amber-500/10 text-amber-700',
       )}
     >
       {t.fieldMap.source[source] ?? source}

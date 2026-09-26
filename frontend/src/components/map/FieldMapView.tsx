@@ -34,7 +34,7 @@ type Selection = { kind: 'track' | 'report'; id: string } | null
 export function FieldMapView({ scene, images, tracks, reports }: Props) {
   const model = useFieldMapModel(scene, images, tracks, reports)
   const clock = useClock(model.start, model.end)
-  const { ref: svgRef, viewBox, mpp, flyTo, fit, handlers } = useMapViewport(model.fitRadiusM)
+  const { ref: svgRef, viewBox, bounds, mpp, flyTo, fit, handlers } = useMapViewport(model.fitRadiusM)
   const navigate = useNavigate()
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>({ tracks: true, frames: true, reports: true })
   const [sources, setSources] = useState<Record<SourceKey, boolean>>({ official: true, third_party: true })
@@ -82,10 +82,10 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
   }
 
   return (
-    <div className="relative h-full overflow-hidden bg-[#060a0f]">
+    <div className="relative h-full overflow-hidden bg-map">
       <svg ref={svgRef} viewBox={viewBox} className="absolute inset-0 size-full cursor-grab touch-none select-none active:cursor-grabbing" {...handlers}>
         <rect x={-1e5} y={-1e5} width={2e5} height={2e5} fill="transparent" onClick={() => setSelection(null)} />
-        <MapGrid extentM={Math.ceil(model.fitRadiusM / 1000) * 1000 + 3000} mpp={mpp} />
+        <MapGrid bounds={bounds} />
         <ZoneLayer
           zones={model.zones}
           mpp={mpp}
@@ -108,29 +108,30 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
           selectedId={selectedReport?.report_id ?? null}
           onSelect={(id) => setSelection({ kind: 'report', id })}
         />
-        <BaseMarker name={scene.base.name} position={scene.base.position} mpp={mpp} />
+        <BaseMarker position={scene.base.position} mpp={mpp} />
       </svg>
 
-      <div className="pointer-events-none absolute inset-x-0 top-3 flex flex-col items-center gap-1 pr-[21.5rem] pl-[15.5rem]">
-        <div className="rounded-lg border bg-card/85 px-5 py-1.5 font-mono text-3xl font-semibold tracking-wider text-foreground backdrop-blur" aria-live="off">
-          {hhmm(minute)}
-        </div>
-        <div className="font-mono text-[11px] text-muted-foreground">
-          <span className="text-emerald-400">{t.fieldMap.activeTracks(activeTracks)}</span> · <span className="text-sky-400">{t.fieldMap.reportsSoFar(feed.length)}</span>
-        </div>
-      </div>
-
       <div className="absolute top-3 bottom-[5.5rem] left-3 flex flex-col justify-between gap-3">
-        <ZonePanel
-          zones={scene.zones.map((z) => z.name)}
-          activeZone={zone}
-          counts={counts}
-          onZone={selectZone}
-          layers={layers}
-          onLayer={(k) => setLayers((l) => ({ ...l, [k]: !l[k] }))}
-          sources={sources}
-          onSource={(k) => setSources((s) => ({ ...s, [k]: !s[k] }))}
-        />
+        <div className="flex flex-col gap-3">
+          <div className="pointer-events-none flex items-baseline gap-3 self-start rounded-lg border bg-card/90 px-4 py-1.5 backdrop-blur">
+            <span className="font-mono text-3xl font-semibold tracking-wider text-foreground" aria-live="off">
+              {hhmm(minute)}
+            </span>
+            <span className="font-mono text-[11px] text-muted-foreground">
+              <span className="text-emerald-700">{t.fieldMap.activeTracks(activeTracks)}</span> · <span className="text-sky-700">{t.fieldMap.reportsSoFar(feed.length)}</span>
+            </span>
+          </div>
+          <ZonePanel
+            zones={scene.zones.map((z) => z.name)}
+            activeZone={zone}
+            counts={counts}
+            onZone={selectZone}
+            layers={layers}
+            onLayer={(k) => setLayers((l) => ({ ...l, [k]: !l[k] }))}
+            sources={sources}
+            onSource={(k) => setSources((s) => ({ ...s, [k]: !s[k] }))}
+          />
+        </div>
         <div className="max-w-md">
           <MapLegend />
         </div>
