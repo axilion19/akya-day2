@@ -73,7 +73,7 @@ sentinel/
 ├── CLAUDE.md                  # root rules (read first by Claude Code)
 ├── PLAN.md                    # this file
 ├── docs/AGENT_DESIGN.md       # agent architecture, schemas, risk rubric
-├── data/stage2/               # organizer data (committed): images/, image_meta.json, zones.json, tracks.csv, field_reports.json
+├── data/                      # organizer data (committed): images/, image_meta.json, zones.json, tracks.csv, field_reports.json
 ├── models/                    # detector weights (gitignored)
 ├── backend/
 │   ├── CLAUDE.md

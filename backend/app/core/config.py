@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     )
 
     # Paths
-    data_dir: Path = REPO_DIR / "data" / "stage2"
+    data_dir: Path = REPO_DIR / "data"
     models_dir: Path = REPO_DIR / "models"
     cache_dir: Path = BACKEND_DIR / ".cache"
     # Recorded watch runs (JSONL event logs) served to the UI's demo mode, no LLM needed.

@@ -14,7 +14,7 @@ Hackathon project: an LLM agent that assesses base-security risk from a drone fr
 ## Working agreement
 - Work in small, verifiable steps. After each step: run the relevant tests/lint, then summarize what changed in ≤ 5 bullets.
 - Before a change touching > 3 files or any public contract (API schema, domain model, SSE event), state a short plan first.
-- Never invent data formats. If the real files in `data/stage2/` differ from the docs, report the difference and adapt the loader only.
+- Never invent data formats. If the real files in `data/` differ from the docs, report the difference and adapt the loader only.
 - Prefer boring, explicit code over clever code. No new dependency without a one-line justification.
 - Do not delete or rewrite working code to "clean up" unless asked.
 - If a requirement is ambiguous and a wrong guess is expensive, ask; otherwise choose the simplest option and write the assumption in the summary.
