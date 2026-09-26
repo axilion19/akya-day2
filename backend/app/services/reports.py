@@ -14,6 +14,7 @@ from app.domain.report import (
     Activity,
     ClaimKind,
     FieldReport,
+    MapReport,
     ReportCheck,
     ReportClaim,
     Verdict,
@@ -21,6 +22,7 @@ from app.domain.report import (
 from app.domain.scene import Zone
 from app.domain.track import Track
 from app.services.geo import frame_center, haversine_m
+from app.services.motion import nearest_zone
 from app.services.tracks import position_at
 
 _TR_ASCII = str.maketrans("çğıöşüÇĞİÖŞÜâ", "cgiosuCGIOSUa")
@@ -312,3 +314,15 @@ def verify_claim(
         instructions=instructions,
     )
 
+
+def locate_report(report: FieldReport, zones: list[Zone], zone_radius_m: float) -> MapReport:
+    """Place a raw report on the map: its coordinates, and the zone it names or else lies in."""
+    norm = normalize(report.text)
+    location = parse_coordinates(report.text)
+    named = next((z.name for z in zones if normalize(z.name) in norm), None)
+    return MapReport(
+        **report.model_dump(),
+        location=location,
+        zone=named or (nearest_zone(location, zones, zone_radius_m) if location else None),
+        zone_named=named is not None,
+    )

@@ -46,3 +46,20 @@ def test_create_then_get_analysis_reuses_latest(golden_client: TestClient) -> No
 def test_unknown_image_is_404(golden_client: TestClient) -> None:
     res = golden_client.post("/api/analyses", json={"image_id": "img_999999"})
     assert res.status_code == 404
+
+
+def test_field_map_tracks_reports_and_motion(golden_client: TestClient) -> None:
+    tracks = golden_client.get("/api/tracks").json()
+    t0122 = next(t for t in tracks if t["track_id"] == "T0122")
+    assert t0122["image_id"] == "img_000860" and len(t0122["points"]) > 1
+
+    reports = golden_client.get("/api/reports").json()
+    times = [r["time_min"] for r in reports]
+    assert times == sorted(times)
+    heavy = next(r for r in reports if r["time"] == "12:35")
+    assert heavy["location"] == {"lat": 39.9253, "lon": 32.8718}
+
+    motion = golden_client.get("/api/tracks/T0122/motion", params={"at": "14:10"}).json()
+    assert motion["track_id"] == "T0122" and motion["dist_now_m"] < 2000
+    assert golden_client.get("/api/tracks/nope/motion", params={"at": "14:10"}).status_code == 404
+    assert golden_client.get("/api/tracks/T0122/motion", params={"at": "x"}).status_code == 422

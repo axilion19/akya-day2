@@ -58,3 +58,15 @@ class ReportAssessment(DomainModel):
     checks: list[ReportCheck]
     linked_detection_ids: list[str]
     trust_weight: float
+
+
+class MapReport(FieldReport):
+    """A raw report placed on the field map: parsed coordinates and its zone.
+
+    `zone` is the zone the text names; otherwise the zone nearest its coordinates
+    (`zone_named` tells which).
+    """
+
+    location: LatLon | None = None
+    zone: str | None = None
+    zone_named: bool = False

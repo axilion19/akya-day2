@@ -124,6 +124,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tracks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tracks
+         * @description All tracks of the day with the frame each one belongs to.
+         */
+        get: operations["list_tracks_api_tracks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Reports
+         * @description All field reports sorted by time, with parsed coordinates and zone.
+         */
+        get: operations["list_reports_api_reports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tracks/{track_id}/motion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Track Motion
+         * @description Motion of one track up to `at`, clamped to the track's time span.
+         */
+        get: operations["get_track_motion_api_tracks__track_id__motion_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -324,6 +384,45 @@ export interface components {
             lat: number;
             /** Lon */
             lon: number;
+        };
+        /**
+         * MapReport
+         * @description A raw report placed on the field map: parsed coordinates and its zone.
+         *
+         *     `zone` is the zone the text names; otherwise the zone nearest its coordinates
+         *     (`zone_named` tells which).
+         */
+        MapReport: {
+            /** Report Id */
+            report_id: string;
+            /** Time */
+            time: string;
+            /** Time Min */
+            time_min: number;
+            /** Source */
+            source: string;
+            /** Text */
+            text: string;
+            location: components["schemas"]["LatLon"] | null;
+            /** Zone */
+            zone: string | null;
+            /**
+             * Zone Named
+             * @default false
+             */
+            zone_named: boolean;
+        };
+        /**
+         * MapTrack
+         * @description A track for the field map, with the frame it belongs to (last point = capture time).
+         */
+        MapTrack: {
+            /** Track Id */
+            track_id: string;
+            /** Points */
+            points: components["schemas"]["TrackPoint"][];
+            /** Image Id */
+            image_id: string | null;
         };
         /**
          * MotionProfile
@@ -793,6 +892,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Analysis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tracks_api_tracks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapTrack"][];
+                };
+            };
+        };
+    };
+    list_reports_api_reports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapReport"][];
+                };
+            };
+        };
+    };
+    get_track_motion_api_tracks__track_id__motion_get: {
+        parameters: {
+            query: {
+                /** @description "HH:MM" */
+                at: string;
+            };
+            header?: never;
+            path: {
+                track_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MotionProfile"];
                 };
             };
             /** @description Validation Error */
