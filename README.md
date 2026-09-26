@@ -100,7 +100,7 @@ Put the weights at `models/best.pt` and set `SENTINEL_DETECTOR_KIND=ultralytics`
 
 ### Organizer data
 
-Put the files in `data/stage2/` (`images/`, `image_meta.json`, `zones.json`, `tracks.csv`, `field_reports.json`) and set `SENTINEL_DATA_DIR=data/stage2`. Only the loader (`backend/app/data/repository.py`) knows raw formats.
+The files are committed in `data/` (`images/`, `image_meta.json`, `zones.json`, `tracks.csv`, `field_reports.json`), the default `SENTINEL_DATA_DIR`. Only the loader (`backend/app/data/repository.py`) knows raw formats.
 
 ---
 

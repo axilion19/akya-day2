@@ -18,7 +18,7 @@ api/routes  →  agent/  →  services/  →  domain/
              llm_client     data/repository
 ```
 - `domain/` — Pydantic models only. No I/O, no imports from other app layers.
-- `data/repository.py` — the only module that reads files in `data/stage2/`. Loads everything once at startup into typed objects; exposes query methods (`get_image_meta`, `tracks_at(minute)`, `reports_between(t0, t1)`).
+- `data/repository.py` — the only module that reads files in `data/`. Loads everything once at startup into typed objects; exposes query methods (`get_image_meta`, `tracks_at(minute)`, `reports_between(t0, t1)`).
 - `services/` — pure, deterministic, synchronous functions (geo, tracks, motion, reports matching, risk). No LLM, no FastAPI, no global state. Unit-tested.
 - `agent/` — orchestration: `pipeline.py` (8-step state machine), `chat_agent.py` (tool-calling loop), `tools.py` (typed wrappers around services for the chat agent), `llm_client.py`, `fallback.py`, `prompts/`.
 - `agent/watch/` — watch mode (AGENT_DESIGN §12): `runner.py` (tick loop), `watcher.py` / `supervisor.py` (LLM turns via `loop.py`), `registry.py` (level rules), `boards.py` (trackers, alerts), `tools.py`, `store.py` (background runs + event buffers).
