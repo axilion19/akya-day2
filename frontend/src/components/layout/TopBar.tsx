@@ -8,7 +8,6 @@ const NAV = [
   { to: '/', label: t.nav.overview, end: true },
   { to: '/map', label: t.nav.map, end: false },
   { to: '/analysis', label: t.nav.analysis, end: false },
-  { to: '/reports', label: t.nav.reports, end: false },
 ] as const
 
 export function TopBar() {

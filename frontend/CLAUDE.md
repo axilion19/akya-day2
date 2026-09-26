@@ -23,7 +23,7 @@ src/
     map/        FieldMapView (Saha Haritası): MapGrid, ZoneLayer, FrameLayer, TrackLayer, ReportLayer,
                 BaseMarker, ZonePanel, ReportFeed, TimeBar, TrackDetail, MapLegend
     reports/    ReportList, ReportVerdictChip, ReportsTable
-  pages/        OverviewPage, FieldMapPage, AnalysisPage, ReportsPage
+  pages/        OverviewPage, FieldMapPage, AnalysisPage
   lib/          risk.ts (level → color/label), format.ts (km, m/s, time), geo.ts (display helpers only)
   i18n/         tr.ts (all user-facing strings), en.ts
   mocks/        img_000860.analysis.json (from AGENT_DESIGN §9) for mock-first development.

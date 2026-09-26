@@ -1,7 +1,7 @@
 // All user-facing strings (Turkish, default for the jury). Keys mirror en.ts.
 export const tr = {
   app: { name: 'SENTINEL', tagline: 'Üs Güvenliği Karar Destek' },
-  nav: { overview: 'Genel Bakış', map: 'Saha Haritası', analysis: 'Analiz', reports: 'Saha Raporları' },
+  nav: { overview: 'Genel Bakış', map: 'Saha Haritası', analysis: 'Analiz' },
   status: {
     api: 'API',
     llm: 'LLM',
@@ -168,7 +168,6 @@ export const tr = {
     score: 'Puan',
     level: 'Seviye',
   },
-  reports: { title: 'Saha Raporları', pending: 'Rapor tablosu P4 aşamasında eklenecek.' },
   overview: {
     title: 'Operasyon Genel Bakış',
     subtitle: (n: number) => `${n} kare · analiz etmek için birini seçin`,
