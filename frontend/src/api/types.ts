@@ -1,0 +1,31 @@
+// UI-facing aliases of generated API types. Never hand-write API shapes; add aliases here.
+import type { components } from './schema'
+
+type Schemas = components['schemas']
+
+export type Analysis = Schemas['Analysis']
+export type Brief = Schemas['Brief']
+export type ComponentStatus = Schemas['ComponentStatus']
+export type Detection = Schemas['Detection']
+export type Health = Schemas['Health']
+export type ImageMeta = Schemas['ImageMeta']
+export type LatLon = Schemas['LatLon']
+export type MotionProfile = Schemas['MotionProfile']
+export type ReportAssessment = Schemas['ReportAssessment']
+export type ReportCheck = Schemas['ReportCheck']
+export type ReportClaim = Schemas['ReportClaim']
+export type RiskFactor = Schemas['RiskFactor']
+export type Scene = Schemas['Scene']
+export type StepResult = Schemas['StepResult']
+export type Stop = Schemas['Stop']
+export type TrackMatch = Schemas['TrackMatch']
+export type TrackSnapshot = Schemas['TrackSnapshot']
+export type VehicleBriefLine = Schemas['VehicleBriefLine']
+export type VehicleRisk = Schemas['VehicleRisk']
+
+export type RiskLevel = Brief['level']
+export type Verdict = ReportAssessment['verdict']
+export type StepName = StepResult['step']
+export type StepStatus = StepResult['status']
+export type RecommendedAction = Brief['recommended_action']
+export type CheckName = ReportCheck['name']
