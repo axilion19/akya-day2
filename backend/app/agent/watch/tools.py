@@ -103,8 +103,14 @@ SUBMIT_WATCH_REPORT = _fn(
                         "type": ["string", "null"],
                         "description": "At most 12 words, or null if nothing new.",
                     },
+                    "report_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Field reports (REP-xx) about this vehicle; the "
+                        "supervisor sees them with it. Empty if none.",
+                    },
                 },
-                "required": ["track_id", "level", "reason", "evidence_ids", "note"],
+                "required": ["track_id", "level", "reason", "evidence_ids", "note", "report_ids"],
             },
         },
         "patterns": {
@@ -120,8 +126,21 @@ SUBMIT_WATCH_REPORT = _fn(
                 "required": ["track_ids", "description", "evidence_ids"],
             },
         },
+        "forwarded_reports": {
+            "type": "array",
+            "description": "Relevant field reports that are not about one of your vehicles "
+            "(area-wide, a vehicle you cannot match, a request to act). Empty if none.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "report_id": {"type": "string", "description": "REP-xx"},
+                    "why": {"type": "string", "description": "At most 12 words."},
+                },
+                "required": ["report_id", "why"],
+            },
+        },
     },
-    ["tick", "street_state", "vehicles", "patterns"],
+    ["tick", "street_state", "vehicles", "patterns", "forwarded_reports"],
 )
 SET_LEVEL = _fn(
     "set_level",

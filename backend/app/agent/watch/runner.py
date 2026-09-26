@@ -371,6 +371,7 @@ class WatchRunner:
                 report=outcome.report,
                 tool_calls=outcome.tool_calls,
                 warnings=outcome.warnings,
+                reports=watcher_mod.referenced_reports(self.repo.reports, outcome.report),
             )
         )
         for a in inp.new_arrivals:
@@ -412,7 +413,27 @@ class WatchRunner:
             "street_state": outcome.report.street_state,
             "suspicious": self._suspicious(inp.rows, verdicts),
             "patterns": [p.model_dump(mode="json") for p in outcome.report.patterns],
+            "reports": self._passed_reports(outcome),
         }
+
+    def _passed_reports(self, outcome: WatcherOutcome) -> list[dict[str, Any]]:
+        """Reports the watcher attached to vehicles or forwarded, with their (untrusted) text."""
+        about: dict[str, list[str]] = {}
+        for v in outcome.report.vehicles:
+            for rid in v.report_ids:
+                about.setdefault(rid, []).append(v.track_id)
+        why = {f.report_id: f.why for f in outcome.report.forwarded_reports}
+        return [
+            {
+                "report_id": r.report_id,
+                "time": r.time,
+                "source": r.source,
+                "text": r.text,
+                "track_ids": about.get(r.report_id, []),
+                "why": why.get(r.report_id),
+            }
+            for r in watcher_mod.referenced_reports(self.repo.reports, outcome.report)
+        ]
 
     def _unchecked(self, checked: set[str], rows: list[VehicleRow]) -> list[dict[str, Any]]:
         out = []

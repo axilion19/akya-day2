@@ -1,10 +1,11 @@
 """Watch agents with a fake LLM: tool loop, repair, fallbacks, supervisor effects, runner."""
 
+import json
 from typing import Any
 
 import pytest
 
-from app.agent.llm_client import ChatResult
+from app.agent.llm_client import ChatResult, Message, ToolSpec
 from app.agent.watch import tools as t
 from app.agent.watch.boards import AlertBoard, BoardError, TrackerBoard
 from app.agent.watch.registry import CarRegistry
@@ -404,3 +405,51 @@ async def test_level_drops_to_the_ceiling_when_no_longer_justified(
     llm = FakeLLM([submit("submit_watch_report", good_report(ctx, "MEDIUM"))])
     out = await run_watcher(llm, ctx, watcher_input(ctx))
     assert {v.track_id: v.level for v in out.report.vehicles}[tid] == ctx.rows[tid].max_level
+
+
+def reporting_responder(messages: list[Message], tools: list[ToolSpec]) -> Any:
+    """rubric_responder, but watchers tie REP-01 to their first vehicle and forward REP-02."""
+    result = rubric_responder(messages, tools)
+    call = result.tool_calls[0]
+    if call.name != "submit_watch_report":
+        return result
+    args = json.loads(call.arguments)
+    if args["vehicles"]:
+        args["vehicles"][0]["report_ids"] = ["REP-01"]
+    args["forwarded_reports"] = [{"report_id": "REP-02", "why": "Area-wide friendly claim."}]
+    return submit("submit_watch_report", args)
+
+
+async def test_watcher_passes_reports_on_to_the_supervisor(
+    golden_repo: Repository, golden_settings: Settings
+) -> None:
+    events: list[Any] = []
+    runner = WatchRunner(
+        golden_repo, golden_settings, FakeLLM(responder=reporting_responder), events.append
+    )
+    await runner.run(TICK, TICK)
+    report = next(e for e in events if e.type == "watcher_report" and e.report.vehicles)
+    first = report.report.vehicles[0]
+    assert first.report_ids == ["REP-01"]
+    # the event carries the report texts, so the UI needs no extra request
+    assert [r.report_id for r in report.reports] == ["REP-01", "REP-02"]
+    sup = next(e for e in events if e.type == "agent_trace" and e.agent == "supervisor")
+    passed = json.loads(sup.user_message.split("<watcher_messages>\n")[1].split("\n</")[0])
+    reports = {r["report_id"]: r for m in passed for r in m["reports"]}
+    assert first.track_id in reports["REP-01"]["track_ids"]
+    assert reports["REP-02"]["why"] == "Area-wide friendly claim."
+    assert reports["REP-02"]["text"].startswith("Planli tatbikat")
+
+
+async def test_watcher_cannot_pass_unknown_or_future_reports(
+    golden_repo: Repository, golden_settings: Settings
+) -> None:
+    ctx = make_ctx(golden_repo, golden_settings)
+    bad = good_report(ctx, "MEDIUM")
+    bad["forwarded_reports"] = [{"report_id": "REP-99", "why": "x"}]
+    llm = FakeLLM(
+        [submit("submit_watch_report", bad), submit("submit_watch_report", good_report(ctx))]
+    )
+    out = await run_watcher(llm, ctx, watcher_input(ctx))
+    assert out.generated_by == "llm" and out.report.forwarded_reports == []
+    assert "unknown report ids" in llm.requests[1][-1]["content"]

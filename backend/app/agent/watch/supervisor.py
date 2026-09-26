@@ -33,7 +33,7 @@ from app.domain.watch import (
     WatchLevel,
 )
 
-PROMPT = "supervisor_v7"
+PROMPT = "supervisor_v8"
 MAX_TOKENS = 16000
 NO_TRACKERS = (
     "3. No trackers or field units are available in this exercise: you cannot send anyone. "

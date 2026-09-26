@@ -14,7 +14,8 @@ from app.agent.watch import tools as t
 from app.agent.watch.loop import SubmitError, fill_pattern_track_ids, run_tool_loop
 from app.agent.watch.prompts import render
 from app.agent.watch.registry import level_index
-from app.domain.report import ReportClaim
+from app.core.timefmt import to_minutes
+from app.domain.report import FieldReport, ReportClaim
 from app.domain.watch import (
     WATCH_LEVELS,
     GeneratedBy,
@@ -26,7 +27,7 @@ from app.domain.watch import (
 )
 from app.services.watch import gated_level, rubric_watch_level
 
-PROMPT = "watcher_v7"
+PROMPT = "watcher_v8"
 MAX_TOKENS = 12000
 LANGUAGE_NAMES = {"tr": "Turkish", "en": "English"}
 
@@ -158,11 +159,31 @@ def _checker(ctx: t.WatchContext, inp: WatcherInput) -> Any:
         evidence += [e for p in report.patterns for e in p.evidence_ids]
         if bad := ctx.unknown_evidence(evidence):
             problems.append(f"unknown evidence ids: {sorted(set(bad))}")
+        if bad_reports := unknown_reports(ctx, report):
+            problems.append(f"unknown report ids (use REP-xx seen so far): {bad_reports}")
         if problems:
             raise SubmitError("; ".join(problems))
         return report
 
     return parse
+
+
+def _report_ids(report: WatcherReport) -> list[str]:
+    ids = [rid for v in report.vehicles for rid in v.report_ids]
+    return ids + [f.report_id for f in report.forwarded_reports]
+
+
+def unknown_reports(ctx: t.WatchContext, report: WatcherReport) -> list[str]:
+    """Report ids that do not exist or were filed after this tick."""
+    now = to_minutes(report.tick)
+    known = {r.report_id for r in ctx.repo.reports if r.time_min <= now}
+    return sorted({rid for rid in _report_ids(report) if rid not in known})
+
+
+def referenced_reports(reports: list[FieldReport], report: WatcherReport) -> list[FieldReport]:
+    """The field reports a watcher attached to vehicles or forwarded, in filing order."""
+    ids = set(_report_ids(report))
+    return [r for r in reports if r.report_id in ids]
 
 
 def enforce_rules(report: WatcherReport, rows: list[VehicleRow]) -> tuple[WatcherReport, list[str]]:

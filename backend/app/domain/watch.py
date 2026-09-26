@@ -9,7 +9,7 @@ from pydantic import Field
 
 from app.domain.base import DomainModel
 from app.domain.geo import LatLon
-from app.domain.report import ReportClaim
+from app.domain.report import FieldReport, ReportClaim
 from app.domain.risk import RiskFactor, RiskLevel
 
 WatchLevel = Literal["LOW", "MEDIUM", "HIGH"]
@@ -117,6 +117,14 @@ class VehicleVerdict(DomainModel):
     reason: str = Field(min_length=1)
     evidence_ids: list[str] = Field(min_length=1)
     note: str | None = None
+    report_ids: list[str] = Field(default_factory=list)  # field reports about this vehicle
+
+
+class ForwardedReport(DomainModel):
+    """A field report a watcher passes to the supervisor without tying it to one vehicle."""
+
+    report_id: str
+    why: str = Field(min_length=1)
 
 
 class GroupPattern(DomainModel):
@@ -134,6 +142,7 @@ class WatcherReport(DomainModel):
     street_state: str = Field(min_length=1)
     vehicles: list[VehicleVerdict]
     patterns: list[GroupPattern] = Field(default_factory=list)
+    forwarded_reports: list[ForwardedReport] = Field(default_factory=list)
 
 
 class Suspicion(DomainModel):
@@ -250,6 +259,9 @@ class WatcherReportEvent(DomainModel):
     report: WatcherReport
     tool_calls: list[str]
     warnings: list[str]
+    # The field reports this check attached to vehicles or forwarded (untrusted text), so a
+    # client can show them without another request.
+    reports: list[FieldReport] = Field(default_factory=list)
 
 
 class AgentTraceEvent(DomainModel):

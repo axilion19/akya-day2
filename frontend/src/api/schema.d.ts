@@ -488,6 +488,32 @@ export interface components {
             /** Bearing From Base Deg */
             bearing_from_base_deg: number | null;
         };
+        /**
+         * FieldReport
+         * @description One raw report from field_reports.json. `text` is untrusted.
+         */
+        FieldReport: {
+            /** Report Id */
+            report_id: string;
+            /** Time */
+            time: string;
+            /** Time Min */
+            time_min: number;
+            /** Source */
+            source: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * ForwardedReport
+         * @description A field report a watcher passes to the supervisor without tying it to one vehicle.
+         */
+        ForwardedReport: {
+            /** Report Id */
+            report_id: string;
+            /** Why */
+            why: string;
+        };
         /** FrameAnalyzedEvent */
         FrameAnalyzedEvent: {
             /**
@@ -1274,6 +1300,8 @@ export interface components {
             evidence_ids: string[];
             /** Note */
             note: string | null;
+            /** Report Ids */
+            report_ids: string[];
         };
         /** WarningEvent */
         WarningEvent: {
@@ -1371,6 +1399,8 @@ export interface components {
             vehicles: components["schemas"]["VehicleVerdict"][];
             /** Patterns */
             patterns: components["schemas"]["GroupPattern"][];
+            /** Forwarded Reports */
+            forwarded_reports: components["schemas"]["ForwardedReport"][];
         };
         /** WatcherReportEvent */
         WatcherReportEvent: {
@@ -1399,6 +1429,8 @@ export interface components {
             tool_calls: string[];
             /** Warnings */
             warnings: string[];
+            /** Reports */
+            reports: components["schemas"]["FieldReport"][];
         };
         /**
          * Zone
