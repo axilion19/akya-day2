@@ -31,5 +31,5 @@ Thumbs.db
 # Demo images copied by build_mock_fixture (img_000860 comes from the case brief)
 frontend/public/mock-images/
 
-# Furkan personal workspace (local only, for now)
-/furkan/
+# Furkan R&D workspace (local only, for now)
+/arge/
