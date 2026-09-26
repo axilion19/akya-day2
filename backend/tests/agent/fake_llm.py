@@ -57,9 +57,24 @@ def _block(text: str, tag: str) -> Any:
     return json.loads(match.group(1)) if match else None
 
 
+def _unverifiable(user: str) -> list[dict[str, Any]]:
+    return [
+        {
+            "report_id": r["report_id"],
+            "verdict": "UNVERIFIABLE",
+            "credibility": 40,
+            "reason": "fake report check",
+            "track_ids": [],
+            "conflicts_with": [],
+            "deception": False,
+        }
+        for r in _block(user, "untrusted_reports") or []
+    ]
+
+
 def rubric_responder(messages: list[Message], tools: list[ToolSpec]) -> ChatResult:
     """Watchers: every listed vehicle at its rubric level (CRITICAL -> HIGH).
-    Supervisor: a plain decision without actions."""
+    Supervisor: a plain decision without actions. Both judge every new report UNVERIFIABLE."""
     user = messages[1]["content"]
     tick = re.match(r"Tick (\d\d:\d\d)", user)
     assert tick is not None
@@ -84,6 +99,7 @@ def rubric_responder(messages: list[Message], tools: list[ToolSpec]) -> ChatResu
                     for v in vehicles
                 ],
                 "patterns": [],
+                "report_checks": _unverifiable(user),
             },
         )
     return submit(
@@ -94,5 +110,6 @@ def rubric_responder(messages: list[Message], tools: list[ToolSpec]) -> ChatResu
             "threat_level": "LOW",
             "patterns": [],
             "watch_next": [],
+            "report_checks": _unverifiable(user),
         },
     )

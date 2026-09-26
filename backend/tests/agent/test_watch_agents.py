@@ -1,11 +1,10 @@
 """Watch agents with a fake LLM: tool loop, repair, fallbacks, supervisor effects, runner."""
 
-import json
 from typing import Any
 
 import pytest
 
-from app.agent.llm_client import ChatResult, Message, ToolSpec
+from app.agent.llm_client import ChatResult
 from app.agent.watch import tools as t
 from app.agent.watch.boards import AlertBoard, BoardError, TrackerBoard
 from app.agent.watch.registry import CarRegistry
@@ -407,49 +406,111 @@ async def test_level_drops_to_the_ceiling_when_no_longer_justified(
     assert {v.track_id: v.level for v in out.report.vehicles}[tid] == ctx.rows[tid].max_level
 
 
-def reporting_responder(messages: list[Message], tools: list[ToolSpec]) -> Any:
-    """rubric_responder, but watchers tie REP-01 to their first vehicle and forward REP-02."""
-    result = rubric_responder(messages, tools)
-    call = result.tool_calls[0]
-    if call.name != "submit_watch_report":
-        return result
-    args = json.loads(call.arguments)
-    if args["vehicles"]:
-        args["vehicles"][0]["report_ids"] = ["REP-01"]
-    args["forwarded_reports"] = [{"report_id": "REP-02", "why": "Area-wide friendly claim."}]
-    return submit("submit_watch_report", args)
+def judgment(report_id: str, **kw: Any) -> dict[str, Any]:
+    return {
+        "report_id": report_id,
+        "verdict": "CONTRADICTED",
+        "credibility": 10,
+        "reason": "Tracks show no truck there.",
+        "track_ids": [],
+        "conflicts_with": [],
+        "deception": False,
+    } | kw
 
 
-async def test_watcher_passes_reports_on_to_the_supervisor(
-    golden_repo: Repository, golden_settings: Settings
-) -> None:
-    events: list[Any] = []
-    runner = WatchRunner(
-        golden_repo, golden_settings, FakeLLM(responder=reporting_responder), events.append
-    )
-    await runner.run(TICK, TICK)
-    report = next(e for e in events if e.type == "watcher_report" and e.report.vehicles)
-    first = report.report.vehicles[0]
-    assert first.report_ids == ["REP-01"]
-    # the event carries the report texts, so the UI needs no extra request
-    assert [r.report_id for r in report.reports] == ["REP-01", "REP-02"]
-    sup = next(e for e in events if e.type == "agent_trace" and e.agent == "supervisor")
-    passed = json.loads(sup.user_message.split("<watcher_messages>\n")[1].split("\n</")[0])
-    reports = {r["report_id"]: r for m in passed for r in m["reports"]}
-    assert first.track_id in reports["REP-01"]["track_ids"]
-    assert reports["REP-02"]["why"] == "Area-wide friendly claim."
-    assert reports["REP-02"]["text"].startswith("Planli tatbikat")
-
-
-async def test_watcher_cannot_pass_unknown_or_future_reports(
+async def test_watcher_must_judge_every_new_report(
     golden_repo: Repository, golden_settings: Settings
 ) -> None:
     ctx = make_ctx(golden_repo, golden_settings)
-    bad = good_report(ctx, "MEDIUM")
-    bad["forwarded_reports"] = [{"report_id": "REP-99", "why": "x"}]
+    inp = watcher_input(ctx)
+    inp.reports = [c for c in ctx.claims if c.report_id == "REP-01"]
+    judged = good_report(ctx, "MEDIUM") | {
+        "report_checks": [judgment("REP-01", conflicts_with=["REP-03"], deception=True)]
+    }
+    llm = FakeLLM(
+        [
+            submit("submit_watch_report", good_report(ctx, "MEDIUM")),
+            submit("submit_watch_report", judged),
+        ]
+    )
+    out = await run_watcher(llm, ctx, inp)
+    assert "missing report_checks for ['REP-01']" in llm.requests[1][-1]["content"]
+    check = out.report.report_checks[0]
+    assert (check.verdict, check.credibility, check.conflicts_with) == (
+        "CONTRADICTED",
+        10,
+        ["REP-03"],
+    )
+    assert check.deception  # the model's own judgment; code does not overrule it
+
+
+async def test_report_judgments_must_name_real_reports(
+    golden_repo: Repository, golden_settings: Settings
+) -> None:
+    ctx = make_ctx(golden_repo, golden_settings)
+    bad = good_report(ctx, "MEDIUM") | {
+        "report_checks": [judgment("REP-01", conflicts_with=["REP-99"])]
+    }
     llm = FakeLLM(
         [submit("submit_watch_report", bad), submit("submit_watch_report", good_report(ctx))]
     )
     out = await run_watcher(llm, ctx, watcher_input(ctx))
-    assert out.generated_by == "llm" and out.report.forwarded_reports == []
+    assert out.generated_by == "llm" and out.report.report_checks == []
     assert "unknown report ids" in llm.requests[1][-1]["content"]
+
+
+async def test_supervisor_must_judge_area_reports(
+    golden_repo: Repository, golden_settings: Settings
+) -> None:
+    ctx = make_ctx(golden_repo, golden_settings)
+    area = [{"report_id": "REP-02", "time": "11:55", "source": "third_party", "text": "..."}]
+    inp = SupervisorInput(
+        tick="14:05",
+        watcher_messages=[],
+        unchecked=[],
+        frames=[],
+        recent_events=[],
+        area_reports=area,
+        layout={},
+    )
+    plain = {
+        "tick": "14:05",
+        "situation_summary": "s",
+        "threat_level": "LOW",
+        "patterns": [],
+        "watch_next": [],
+    }
+    judged = plain | {"report_checks": [judgment("REP-02", verdict="UNVERIFIABLE", credibility=40)]}
+    llm = FakeLLM(
+        [submit("submit_supervisor_decision", plain), submit("submit_supervisor_decision", judged)]
+    )
+    out = await run_supervisor(llm, ctx, inp)
+    assert "missing report_checks for ['REP-02']" in llm.requests[1][-1]["content"]
+    assert [c.report_id for c in out.decision.report_checks] == ["REP-02"]
+
+
+async def test_runner_passes_report_judgments_on(
+    golden_repo: Repository, golden_settings: Settings
+) -> None:
+    events: list[Any] = []
+    runner = WatchRunner(
+        golden_repo, golden_settings, FakeLLM(responder=rubric_responder), events.append
+    )
+    await runner.run(13 * 60, 13 * 60 + 15)
+    judged = [
+        e
+        for e in events
+        if e.type == "watcher_report"
+        and any(c.report_id == "REP-01" for c in e.report.report_checks)
+    ]
+    assert len(judged) == 1  # judged once, at the first check of its sector after 13:05
+    event = judged[0]
+    assert [r.report_id for r in event.reports] == ["REP-01"]  # text for the UI
+    trace = next(
+        e
+        for e in events
+        if e.type == "agent_trace" and e.agent == "supervisor" and e.tick == event.tick
+    )
+    assert (
+        '"report_id": "REP-01"' in trace.user_message and '"credibility": 40' in trace.user_message
+    )

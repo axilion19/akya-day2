@@ -21,7 +21,7 @@ from app.agent.watch.boards import BoardError
 from app.agent.watch.loop import SubmitError, fill_pattern_track_ids, run_tool_loop
 from app.agent.watch.prompts import render
 from app.agent.watch.registry import LevelChange, level_index
-from app.agent.watch.watcher import LANGUAGE_NAMES
+from app.agent.watch.watcher import LANGUAGE_NAMES, report_problems
 from app.domain.watch import (
     WATCH_LEVELS,
     GeneratedBy,
@@ -33,7 +33,7 @@ from app.domain.watch import (
     WatchLevel,
 )
 
-PROMPT = "supervisor_v8"
+PROMPT = "supervisor_v9"
 MAX_TOKENS = 16000
 NO_TRACKERS = (
     "3. No trackers or field units are available in this exercise: you cannot send anyone. "
@@ -246,6 +246,9 @@ def _checker(ctx: t.WatchContext, inp: SupervisorInput) -> Any:
             problems.append(f"unknown track ids: {unknown}")
         if bad := ctx.unknown_evidence([e for p in decision.patterns for e in p.evidence_ids]):
             problems.append(f"unknown evidence ids: {sorted(set(bad))}")
+        problems += report_problems(
+            ctx, decision.report_checks, inp.tick, {r["report_id"] for r in inp.area_reports}
+        )
         if problems:
             raise SubmitError("; ".join(problems))
         return decision
