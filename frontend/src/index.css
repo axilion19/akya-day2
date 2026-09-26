@@ -90,7 +90,7 @@
   --chart-4: oklch(0.65 0.17 50);
   --chart-5: oklch(0.577 0.245 27.325);
   --radius: 0.5rem;
-  --sidebar: oklch(0.95 0.006 240);
+  --sidebar: oklch(0.94 0.016 225); /* light sky tint: left sidebar and right side panels */
   --sidebar-foreground: oklch(0.22 0.02 255);
   --sidebar-primary: oklch(0.55 0.11 220);
   --sidebar-primary-foreground: oklch(0.99 0 0);

@@ -11,6 +11,7 @@ from app.domain.base import DomainModel
 from app.domain.geo import LatLon
 from app.domain.report import FieldReport, ReportClaim
 from app.domain.risk import RiskFactor, RiskLevel
+from app.domain.track import MapTrack
 
 WatchLevel = Literal["LOW", "MEDIUM", "HIGH"]
 WATCH_LEVELS: tuple[WatchLevel, ...] = ("LOW", "MEDIUM", "HIGH")
@@ -60,6 +61,8 @@ class VehicleRow(DomainModel):
     max_level: WatchLevel = "HIGH"
     # Other vehicles moving together with this one (services/behavior.moving_groups).
     group_ids: list[str] = Field(default_factory=list)
+    # Set when the operator announced this vehicle (ExpectedVehicle): code keeps it LOW.
+    expected: str | None = None
     registry_level: WatchLevel
     pending_level: WatchLevel | None
     notes_count: int
@@ -120,6 +123,20 @@ class VehicleVerdict(DomainModel):
 
 
 ReportVerdict = Literal["CONSISTENT", "CONTRADICTED", "UNVERIFIABLE", "IRRELEVANT"]
+
+
+class ExpectedVehicle(DomainModel):
+    """A vehicle the human operator announced to the supervisor (trusted, unlike field reports).
+    Code matches it to a track when one appears and keeps that vehicle LOW."""
+
+    expected_id: str  # EXP-<n>
+    announced_at: str  # HH:MM of the operator's message
+    description: str
+    sector: str
+    arrive_from: str  # HH:MM
+    arrive_to: str  # HH:MM
+    vehicle_type: str | None = None
+    track_id: str | None = None  # the matched track, once seen
 
 
 class ReportJudgment(DomainModel):
@@ -273,6 +290,47 @@ class WatcherReportEvent(DomainModel):
     reports: list[FieldReport] = Field(default_factory=list)
 
 
+class ScenarioLoadedEvent(DomainModel):
+    """A scripted demo scenario runs: its synthetic vehicles, so a client can draw them."""
+
+    type: Literal["scenario_loaded"] = "scenario_loaded"
+    tick: str
+    name: str
+    description: str
+    extra_tracks: list[MapTrack]
+
+
+class OperatorMessageEvent(DomainModel):
+    """The human operator wrote to the supervisor."""
+
+    type: Literal["operator_message"] = "operator_message"
+    tick: str
+    time: str
+    text: str
+
+
+class OperatorReplyEvent(DomainModel):
+    """The supervisor's answer to the operator, with what its tools did."""
+
+    type: Literal["operator_reply"] = "operator_reply"
+    tick: str
+    time: str  # of the operator message it answers
+    generated_by: GeneratedBy
+    duration_ms: int
+    reply: str
+    actions: list[SupervisorAction]
+    tool_calls: list[str]
+    warnings: list[str]
+
+
+class ExpectedVehicleEvent(DomainModel):
+    """An announced vehicle was registered, or matched to a track."""
+
+    type: Literal["expected_vehicle"] = "expected_vehicle"
+    tick: str
+    vehicle: ExpectedVehicle
+
+
 class AgentTraceEvent(DomainModel):
     """Everything one agent turn saw and did: prompts, each LLM call (with the model's reasoning),
     each tool call and result, and the final output."""
@@ -342,6 +400,10 @@ WatchEvent = Annotated[
     TickStartedEvent
     | FrameAnalyzedEvent
     | AgentTraceEvent
+    | ScenarioLoadedEvent
+    | OperatorMessageEvent
+    | OperatorReplyEvent
+    | ExpectedVehicleEvent
     | WatcherReportEvent
     | LevelChangedEvent
     | SupervisorDecisionEvent

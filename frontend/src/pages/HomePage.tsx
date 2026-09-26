@@ -1,6 +1,6 @@
-import { Activity, Camera, Navigation, RadioTower } from 'lucide-react'
+import { Activity, Camera, Images, Navigation, RadioTower } from 'lucide-react'
+import { Link } from 'react-router'
 import { useMemo } from 'react'
-import { useSearchParams } from 'react-router'
 import type { Analysis } from '@/api/types'
 import { RiskBadge } from '@/components/analysis/RiskBadge'
 import { ActivityChart } from '@/components/home/ActivityChart'
@@ -12,27 +12,24 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAnalyses } from '@/hooks/useAnalysis'
 import { useFieldMapData } from '@/hooks/useFieldMap'
+import { useMasterClock } from '@/hooks/useMasterClock'
 import { t } from '@/i18n'
 import { hhmm } from '@/lib/fieldMap'
 import { placeName } from '@/lib/format'
-import { SERIES_BIN_MIN, dayBounds, situationAt } from '@/lib/situation'
+import { dayBounds, situationAt } from '@/lib/situation'
 import { maxLevel, watchedVehicles } from '@/lib/watchlist'
 
 const WATCH_LIMIT = 5
 const REPORT_LIMIT = 6
 
-const parseTime = (v: string | null) => {
-  const m = v?.match(/^(\d{1,2}):(\d{2})$/)
-  return m ? Number(m[1]) * 60 + Number(m[2]) : null
-}
-
-/** Situation board for the security chief: where things stand at the chosen time (default: latest data). */
+/** Situation board for the security chief: where things stand at the master clock's minute. */
 export function HomePage() {
   const th = t.home
   const { scene, images, tracks, reports, isPending, isError, refetch } = useFieldMapData()
-  const [params, setParams] = useSearchParams()
+  const clock = useMasterClock()
   const bounds = useMemo(() => dayBounds(tracks ?? [], reports ?? []), [tracks, reports])
-  const now = Math.min(bounds.end, Math.max(bounds.start, parseTime(params.get('t')) ?? bounds.end))
+  // Whole minutes, so the board is recomputed once per simulated minute, not every frame.
+  const now = Math.min(bounds.end, Math.max(bounds.start, Math.floor(clock.minute)))
 
   const sit = useMemo(
     () => (scene && images && tracks && reports ? situationAt(now, scene.zones.map((z) => z.name), images, tracks, reports) : null),
@@ -74,9 +71,6 @@ export function HomePage() {
   const etas = closing.flatMap((v) => (v.etaMin != null ? [v.etaMin] : []))
   const official = sit.reportsRecent.filter((r) => r.source === 'official').length
   const delta = sit.activeTracks - sit.activeTracksBefore
-  const options: number[] = []
-  for (let m = bounds.start; m <= bounds.end; m += SERIES_BIN_MIN) options.push(m)
-  const setNow = (m: number | null) => setParams(m == null || m === bounds.end ? {} : { t: hhmm(m) }, { replace: true })
 
   return (
     <div className="mx-auto flex max-w-[1600px] flex-col gap-5 p-6">
@@ -86,27 +80,16 @@ export function HomePage() {
           <p className="text-sm text-muted-foreground">{th.subtitle(hhmm(now))}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Button asChild size="sm" variant="outline">
+            <Link to="/overview">
+              <Images aria-hidden />
+              {th.allFrames}
+            </Link>
+          </Button>
           <span className="flex items-center gap-2 text-xs text-muted-foreground">
             {th.overall}
             {overall ? <RiskBadge level={overall} size="lg" /> : <Skeleton className="h-7 w-16" />}
           </span>
-          <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            {th.asOf}
-            <select
-              value={now}
-              onChange={(e) => setNow(Number(e.target.value))}
-              className="h-8 rounded-md border bg-background px-2 font-mono text-sm text-foreground [color-scheme:dark]"
-            >
-              {options.map((m) => (
-                <option key={m} value={m}>
-                  {hhmm(m)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button size="sm" variant="outline" disabled={now === bounds.end} onClick={() => setNow(null)}>
-            {th.latest}
-          </Button>
         </div>
       </header>
 

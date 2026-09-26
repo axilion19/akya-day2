@@ -18,6 +18,7 @@ from app.domain.track import MotionProfile, Track, TrackPoint
 from app.domain.watch import (
     WATCH_LEVELS,
     BehaviorClass,
+    ExpectedVehicle,
     FrameDetection,
     ReportLookup,
     Rubric,
@@ -28,6 +29,7 @@ from app.domain.watch import (
 from app.services.behavior import behavior_class
 from app.services.geo import angle_diff_deg, bearing_deg, haversine_m, pixel_to_latlon
 from app.services.motion import motion_profile
+from app.services.reports import normalize
 from app.services.risk import (
     TYPE_POINTS,
     distance_factor,
@@ -356,3 +358,46 @@ def ticks(start_min: int, end_min: int) -> list[int]:
     """Tick minutes from start to end inclusive, every 5 minutes."""
     first = math.ceil(start_min / TICK_MIN) * TICK_MIN
     return list(range(first, end_min + 1, TICK_MIN))
+
+
+# ---- operator-announced vehicles ----
+
+EXPECTED_EARLY_MIN = 10  # an announced vehicle may show up this long before its window
+
+
+def resolve_sector(name: str, zones: list[Zone]) -> str | None:
+    """Zone name for what the operator or the model wrote ("Doğu Yolu" -> "Dogu Yolu")."""
+    want = normalize(name).strip()
+    return next((z.name for z in zones if normalize(z.name) == want), None)
+
+
+def match_expected(
+    expected: ExpectedVehicle,
+    rows: list[VehicleRow],
+    tracks: dict[str, Track],
+    zones: list[Zone],
+    taken: set[str],
+) -> str | None:
+    """The track an announced vehicle is: first seen in the announced sector within the window
+    (from EXPECTED_EARLY_MIN before it), moving and closing on the base now; the earliest such
+    track, never one already matched to another announcement."""
+    lo = to_minutes(expected.arrive_from) - EXPECTED_EARLY_MIN
+    hi = to_minutes(expected.arrive_to)
+    best: tuple[int, str] | None = None
+    for row in rows:
+        if row.track_id in taken or not (row.moving and row.closing_last5_m_per_min > 0):
+            continue
+        first = tracks[row.track_id].points[0]
+        if not lo <= first.time_min <= hi or sector_of(first.position, zones) != expected.sector:
+            continue
+        if best is None or first.time_min < best[0]:
+            best = (first.time_min, row.track_id)
+    return best[1] if best else None
+
+
+def mark_expected(row: VehicleRow, expected: ExpectedVehicle) -> VehicleRow:
+    """An announced vehicle's row: capped at LOW, with who announced it and when."""
+    note = f"{expected.expected_id}: announced by the operator at {expected.announced_at}"
+    return row.model_copy(
+        update={"max_level": "LOW", "expected": f"{note}: {expected.description}"}
+    )

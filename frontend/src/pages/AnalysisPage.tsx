@@ -20,11 +20,11 @@ export function AnalysisPage() {
   const { imageId = '' } = useParams()
   const navigate = useNavigate()
   // Opened only from an overview card or a map frame card; go back to whichever one it was.
-  const from: 'overview' | 'map' = (useLocation().state as { from?: string } | null)?.from === 'map' ? 'map' : 'overview'
+  const from: 'overview' | 'watch' = (useLocation().state as { from?: string } | null)?.from === 'watch' ? 'watch' : 'overview'
   const goBack = () => {
     const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0
     if (idx > 0) void navigate(-1)
-    else void navigate(from === 'map' ? '/map' : '/overview')
+    else void navigate(from === 'watch' ? '/watch' : '/overview')
   }
   const { data: analysis, isPending, isError } = useAnalysis(imageId)
   const pb = usePlayback(analysis?.steps.length ?? 8, imageId)

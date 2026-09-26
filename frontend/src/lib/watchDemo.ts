@@ -1,6 +1,6 @@
 // Groups a recorded watch run's events by tick for the demo player. No domain logic: levels,
 // reasons and alerts are exactly what the agents produced; this only indexes them.
-import type { FieldReport, ReportJudgment, VehicleRow, WatchEvent, WatchEventOf, WatchLevel } from '@/api/types'
+import type { FieldReport, MapTrack, ReportJudgment, VehicleRow, WatchEvent, WatchEventOf, WatchLevel, WatchRecording } from '@/api/types'
 
 export interface TickView {
   tick: string
@@ -37,8 +37,22 @@ function applyChange(levels: Map<string, VehicleState>, tv: TickView, c: WatchEv
   levels.set(c.track_id, { level: c.to_level, pending: c.pending, highSince })
 }
 
+/** One operator message to the supervisor and the supervisor's answer. */
+export interface ChatEntry {
+  time: string
+  minute: number
+  text: string
+  reply: WatchEventOf<'operator_reply'> | undefined
+}
+
 export interface DemoModel {
   ticks: TickView[]
+  /** The operator conversation (scenario runs only), in time order. */
+  chat: ChatEntry[]
+  /** Synthetic vehicles of a scenario run, drawn with the real tracks. */
+  extraTracks: MapTrack[]
+  /** Announced vehicles: registered, then matched to a track. */
+  expected: WatchEventOf<'expected_vehicle'>[]
   /** Registry level of every vehicle after each tick (index = tick index). */
   levelsAfter: Map<string, VehicleState>[]
   /** Latest code-computed row per vehicle seen by a watcher up to each tick. */
@@ -52,8 +66,17 @@ export const toMinute = (hhmm: string): number => {
 
 export function buildDemoModel(events: WatchEvent[]): DemoModel {
   const ticks: TickView[] = []
+  const chat: ChatEntry[] = []
+  const expected: WatchEventOf<'expected_vehicle'>[] = []
+  let extraTracks: MapTrack[] = []
   let cur: TickView | undefined
   for (const e of events) {
+    if (e.type === 'scenario_loaded') extraTracks = e.extra_tracks
+    else if (e.type === 'operator_message') chat.push({ time: e.time, minute: toMinute(e.time), text: e.text, reply: undefined })
+    else if (e.type === 'operator_reply') {
+      const entry = chat.find((c) => c.time === e.time && !c.reply)
+      if (entry) entry.reply = e
+    } else if (e.type === 'expected_vehicle') expected.push(e)
     if (e.type === 'tick_started') {
       cur = {
         tick: e.tick,
@@ -96,7 +119,7 @@ export function buildDemoModel(events: WatchEvent[]): DemoModel {
     return rows
   }
 
-  return { ticks, levelsAfter, rowsUpTo }
+  return { ticks, chat, extraTracks, expected, levelsAfter, rowsUpTo }
 }
 
 /** One agent's judgment of a field report, with the report and who judged it when. */
@@ -277,4 +300,50 @@ export function vehicleTypes(model: DemoModel, head: Playhead): Map<string, stri
     for (const f of tv.frames) for (const d of f.detections) if (d.track_id) types.set(d.track_id, d.label)
   })
   return types
+}
+
+// ---- which recording plays at a master-clock minute ----
+
+/** The recording whose ticks cover `minute` (its first window starts 5 minutes before its first
+ *  tick); the longest if several do, null if none. */
+export function recordingAt(list: WatchRecording[], minute: number): string | null {
+  let best: WatchRecording | null = null
+  for (const r of list) {
+    const first = r.ticks[0]
+    const last = r.ticks[r.ticks.length - 1]
+    if (!first || !last || minute < toMinute(first) - TICK_MIN || minute > toMinute(last)) continue
+    if (!best || r.ticks.length > best.ticks.length) best = r
+  }
+  return best?.recording_id ?? null
+}
+
+/** "10:05-11:10": the clock span a recording covers. */
+export function recordingWindow(r: WatchRecording): string {
+  const first = r.ticks[0] ?? '00:00'
+  const start = toMinute(first) - TICK_MIN
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(Math.floor(start / 60))}:${pad(start % 60)}-${r.ticks[r.ticks.length - 1] ?? first}`
+}
+
+// ---- the operator conversation (scenario runs) ----
+
+/** The supervisor's reply types out over this many simulated minutes, starting this long after
+ *  the operator's message. */
+export const CHAT_REPLY = { delay: 0.25, dur: 1.2 } as const
+
+/** Messages the operator has written by `minute`, each with how much of the reply is shown. */
+export function chatAt(model: DemoModel, minute: number): { entry: ChatEntry; reply: number }[] {
+  return model.chat
+    .filter((c) => c.minute <= minute)
+    .map((entry) => ({ entry, reply: progress(minute - entry.minute, { start: CHAT_REPLY.delay, dur: CHAT_REPLY.dur }) }))
+}
+
+/** Announced vehicles already matched to a track by `minute` (from their tick's window start). */
+export function expectedAt(model: DemoModel, minute: number): Map<string, WatchEventOf<'expected_vehicle'>['vehicle']> {
+  const out = new Map<string, WatchEventOf<'expected_vehicle'>['vehicle']>()
+  for (const e of model.expected) {
+    const id = e.vehicle.track_id
+    if (id && toMinute(e.tick) - TICK_MIN <= minute) out.set(id, e.vehicle)
+  }
+  return out
 }

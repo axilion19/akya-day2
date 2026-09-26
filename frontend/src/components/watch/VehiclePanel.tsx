@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import type { VehicleRow } from '@/api/types'
+import type { ExpectedVehicle, VehicleRow } from '@/api/types'
 import { RiskBadge } from '@/components/analysis/RiskBadge'
 import { Button } from '@/components/ui/button'
 import { t } from '@/i18n'
@@ -13,11 +13,13 @@ interface Props {
   state: VehicleState | undefined
   row: VehicleRow | undefined
   history: ReturnType<typeof verdictHistory>
+  /** Set when the operator announced this vehicle (kept LOW). */
+  announced: ExpectedVehicle | undefined
   onClose: () => void
 }
 
 /** Why the agents rate one vehicle the way they do: code facts plus every watcher's verdict. */
-export function VehiclePanel({ trackId, state, row, history, onClose }: Props) {
+export function VehiclePanel({ trackId, state, row, history, announced, onClose }: Props) {
   const v = t.watch.vehicle
   return (
     <aside className="absolute top-[5.25rem] left-3 flex max-h-[calc(100%-6.5rem)] w-96 flex-col gap-3 overflow-auto rounded-lg border bg-card/95 p-4 shadow-xl backdrop-blur animate-in fade-in slide-in-from-left-2 duration-200">
@@ -34,6 +36,15 @@ export function VehiclePanel({ trackId, state, row, history, onClose }: Props) {
           </Button>
         </div>
       </header>
+      {announced && (
+        <p className="rounded-md border border-sky-500/40 bg-sky-50 px-2 py-1.5 text-xs text-sky-800">
+          <span className="font-semibold">
+            {v.announced} · {announced.announced_at} · {announced.expected_id}
+          </span>
+          <br />
+          {announced.description}
+        </p>
+      )}
       {row ? (
         <div className="flex flex-col gap-1 text-xs">
           <p className="text-muted-foreground">{v.facts}</p>

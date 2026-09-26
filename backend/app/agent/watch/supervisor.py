@@ -33,7 +33,7 @@ from app.domain.watch import (
     WatchLevel,
 )
 
-PROMPT = "supervisor_v9"
+PROMPT = "supervisor_v10"
 MAX_TOKENS = 16000
 NO_TRACKERS = (
     "3. No trackers or field units are available in this exercise: you cannot send anyone. "
@@ -122,6 +122,9 @@ class _Effects:
         if not isinstance(ids, list) or not ids:
             raise BoardError("track_ids must be a non-empty list")
         track_ids = [self.ctx.track_id({"track_id": i}) for i in ids]
+        announced = [i for i in track_ids if (r := self.ctx.rows.get(i)) and r.expected]
+        if announced and len(announced) == len(track_ids):
+            raise BoardError(f"{announced} were announced by the operator; do not alert about them")
         headline = str(args.get("headline") or "").strip()
         description = str(args.get("description") or "").strip()
         if not headline or not description:

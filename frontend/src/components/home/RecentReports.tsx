@@ -16,7 +16,7 @@ export function RecentReports({ reports }: Props) {
     <section className="flex flex-col rounded-lg border bg-card">
       <header className="flex items-center justify-between border-b px-4 py-2.5">
         <h2 className="text-xs font-semibold tracking-widest text-emerald-700">{tr.title.toLocaleUpperCase('tr-TR')}</h2>
-        <Link to="/map" className="flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground">
+        <Link to="/watch" className="flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground">
           {tr.all}
           <ArrowRight aria-hidden className="size-3" />
         </Link>

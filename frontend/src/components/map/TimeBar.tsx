@@ -1,49 +1,36 @@
-import { Pause, Play } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import type { ClockSpeed } from '@/hooks/useClock'
+import { useMasterClock } from '@/hooks/useMasterClock'
 import { t } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { type ActivityBin, type TimeTick, TimeScrubber } from './TimeScrubber'
 
 interface Props {
-  start: number
-  end: number
-  minute: number
-  playing: boolean
-  speed: ClockSpeed
   ticks: TimeTick[]
   activity: ActivityBin[]
-  onToggle: () => void
-  onSpeed: () => void
-  onSeek: (minute: number) => void
 }
 
-/** Bottom bar: icon play/pause, a speed button that cycles 1x-4x, and the lane scrubber. */
-export function TimeBar({ start, end, minute, playing, speed, ticks, activity, onToggle, onSpeed, onSeek }: Props) {
-  const fm = t.fieldMap
+/** A page's slider on the master clock, like a live stream's: drag back to rewatch, never past
+ *  the live edge; the live button jumps back. Play and speed live in the sidebar. */
+export function TimeBar({ ticks, activity }: Props) {
+  const clock = useMasterClock()
+  const c = t.clock
+  const behind = Math.round(clock.behind)
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card/85 px-3 pt-2.5 pb-1.5 backdrop-blur">
-      <Button
-        size="icon"
-        variant="outline"
-        onClick={onToggle}
-        aria-label={playing ? fm.pause : fm.play}
-        title={playing ? fm.pause : fm.play}
-        className="shrink-0 border-emerald-500/50 text-emerald-700"
+      <button
+        type="button"
+        onClick={clock.goLive}
+        disabled={behind === 0}
+        title={behind > 0 ? c.behind(behind) : c.live}
+        className={cn(
+          'flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold tracking-widest uppercase',
+          behind === 0 ? 'border-red-500/40 text-red-600' : 'text-muted-foreground hover:border-red-500/40 hover:text-red-600',
+        )}
       >
-        {playing ? <Pause aria-hidden /> : <Play aria-hidden />}
-      </Button>
-      <Button
-        size="sm"
-        variant="secondary"
-        onClick={onSpeed}
-        aria-label={`${fm.speedLabel}: ${fm.speed(speed)}`}
-        title={fm.speedLabel}
-        className={cn('w-11 shrink-0 font-mono', speed > 1 && 'text-emerald-700')}
-      >
-        {fm.speed(speed)}
-      </Button>
-      <TimeScrubber start={start} end={end} minute={minute} ticks={ticks} activity={activity} onSeek={onSeek} />
+        <span aria-hidden className={cn('size-2 rounded-full', behind === 0 ? 'bg-red-600' : 'bg-muted-foreground/50', behind === 0 && clock.playing && 'animate-pulse')} />
+        {c.goLive}
+        {behind > 0 && <span className="font-mono tracking-normal normal-case">{c.behindShort(behind)}</span>}
+      </button>
+      <TimeScrubber start={clock.start} end={clock.end} minute={clock.minute} live={clock.live} ticks={ticks} activity={activity} onSeek={clock.seek} />
     </div>
   )
 }

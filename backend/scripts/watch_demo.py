@@ -20,10 +20,14 @@ from app.agent.watch.runner import WatchRunner
 from app.core.config import get_settings
 from app.core.timefmt import to_minutes
 from app.data.repository import Repository
+from app.data.scenario import load_scenario, scenario_tracks
 from app.domain.watch import (
+    ExpectedVehicleEvent,
     FrameAnalyzedEvent,
     LevelChangedEvent,
     OperatorAlertEvent,
+    OperatorMessageEvent,
+    OperatorReplyEvent,
     SupervisorDecisionEvent,
     TickCompletedEvent,
     TickStartedEvent,
@@ -89,6 +93,15 @@ def _print(event: Any) -> None:
         print(f"    {al.description}")
     elif isinstance(event, WarningEvent):
         print(f"  (warning {event.scope}: {event.message})")
+    elif isinstance(event, OperatorMessageEvent):
+        print(f"\n  [operator {event.time}] {event.text}")
+    elif isinstance(event, OperatorReplyEvent):
+        print(f"  [supervisor → operator] {event.generated_by}: {event.reply}")
+        for act in event.actions:
+            print(f"    action {act.tool}: {act.summary}")
+    elif isinstance(event, ExpectedVehicleEvent):
+        v = event.vehicle
+        print(f"  = {v.expected_id} {v.sector} {v.arrive_from}-{v.arrive_to} track={v.track_id}")
     elif isinstance(event, TickCompletedEvent):
         print(f"  --- tick done in {event.duration_ms / 1000:.1f}s · levels {event.levels}")
 
@@ -105,6 +118,9 @@ async def main() -> None:
     parser.add_argument(
         "--save-as", default=None, help="also save as a demo recording (backend/recordings/<name>)"
     )
+    parser.add_argument(
+        "--scenario", type=Path, default=None, help="scripted operator messages + extra tracks"
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.WARNING)
@@ -117,6 +133,9 @@ async def main() -> None:
         overrides |= {"detector_kind": "ultralytics", "detector_weights": args.weights.resolve()}
     settings = get_settings().model_copy(update=overrides)
     repo = Repository(settings.data_dir)
+    scenario = load_scenario(args.scenario) if args.scenario else None
+    if scenario is not None:  # its synthetic vehicles join this run only
+        repo.tracks.update({t.track_id: t for t in scenario_tracks(scenario)})
     llm = None if args.no_llm else build_llm(settings)
     detector = None if args.no_detector else build_detector(settings)
     detector_state = "off" if detector is None else detector.is_ready()[1]
@@ -136,7 +155,7 @@ async def main() -> None:
             log.write(json.dumps(event_payload(event), ensure_ascii=False) + "\n")
             log.flush()
 
-        runner = WatchRunner(repo, settings, llm, on_event, detector)
+        runner = WatchRunner(repo, settings, llm, on_event, detector, scenario)
         await runner.run(to_minutes(args.start), to_minutes(args.end))
 
     if isinstance(llm, GLMClient):

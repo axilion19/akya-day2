@@ -7,6 +7,7 @@ import { type ImageFilter, ImageFilters } from '@/components/overview/ImageFilte
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useImages } from '@/hooks/useImages'
+import { useMasterClock } from '@/hooks/useMasterClock'
 import { t } from '@/i18n'
 import { hhmm } from '@/lib/fieldMap'
 import { placeName } from '@/lib/format'
@@ -43,8 +44,11 @@ function useImageFilter(images: ImageMeta[]) {
 // TODO(P4): KPI strip, scene map with frame footprints, risk badges from batch precompute.
 export function OverviewPage() {
   const { data, isPending, isError } = useImages()
-  const images = useMemo(() => [...(data ?? [])].sort((a, b) => a.capture_min - b.capture_min), [data])
-  const { filter, bounds, setFilter, reset } = useImageFilter(images)
+  const all = useMemo(() => [...(data ?? [])].sort((a, b) => a.capture_min - b.capture_min), [data])
+  const { filter, bounds, setFilter, reset } = useImageFilter(all)
+  // Only frames captured by the master clock's minute exist yet.
+  const now = Math.floor(useMasterClock().minute)
+  const images = useMemo(() => all.filter((m) => m.capture_min <= now), [all, now])
   const navigate = useNavigate()
 
   const zoneCounts = useMemo(() => {
@@ -64,7 +68,11 @@ export function OverviewPage() {
     <div className="flex flex-col gap-4 p-6">
       <div>
         <h1 className="text-lg font-semibold">{t.overview.title}</h1>
-        {data && <p className="text-sm text-muted-foreground">{t.overview.subtitle(images.length)}</p>}
+        {data && (
+          <p className="text-sm text-muted-foreground">
+            {t.overview.subtitle(images.length)} · {t.overview.asOf(hhmm(now), all.length)}
+          </p>
+        )}
       </div>
       {images.length > 0 && (
         <ImageFilters
@@ -78,6 +86,9 @@ export function OverviewPage() {
         />
       )}
       {isPending && <Skeleton className="h-48" />}
+      {all.length > 0 && images.length === 0 && (
+        <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">{t.overview.noneYet(hhmm(now))}</p>
+      )}
       {(isError || data?.length === 0) && <p className="text-sm text-muted-foreground">{t.overview.empty}</p>}
       {images.length > 0 && shown.length === 0 && (
         <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-8 text-sm text-muted-foreground">

@@ -91,3 +91,14 @@ def km(meters: float, lang: Lang) -> str:
     """Kilometers with one decimal, locale-style separator."""
     text = f"{meters / 1000:.1f}"
     return text.replace(".", ",") if lang == "tr" else text
+
+
+OPERATOR_FALLBACK: dict[Lang, str] = {
+    "tr": "Mesajınızı aldım, ancak şu an işleyemedim; lütfen birazdan tekrar yazın.",
+    "en": "Message received, but I could not act on it now; please write again shortly.",
+}
+
+
+def operator_fallback(lang: Lang) -> str:
+    """The supervisor's reply to the operator when the LLM is unavailable (no action taken)."""
+    return OPERATOR_FALLBACK[lang]

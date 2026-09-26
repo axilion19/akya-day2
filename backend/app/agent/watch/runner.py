@@ -15,25 +15,36 @@ from collections.abc import Callable
 from typing import Any
 
 from app.agent.llm_client import ChatLLM
+from app.agent.watch import operator as operator_mod
 from app.agent.watch import supervisor as supervisor_mod
 from app.agent.watch import watcher as watcher_mod
-from app.agent.watch.boards import AlertBoard, TrackerBoard
+from app.agent.watch.boards import AlertBoard, BoardError, TrackerBoard
+from app.agent.watch.operator import OperatorBoard, OperatorInput, run_operator_turn
 from app.agent.watch.registry import CarRegistry, LevelChange, level_index
 from app.agent.watch.supervisor import SupervisorInput, SupervisorOutcome, run_supervisor
 from app.agent.watch.tools import WatchContext
 from app.agent.watch.watcher import WatcherInput, WatcherOutcome, needs_judgment, run_watcher
 from app.core.config import Settings
 from app.core.errors import DetectorError, NotFoundError
-from app.core.timefmt import to_hhmm
+from app.core.timefmt import to_hhmm, to_minutes
 from app.data.repository import Repository
+from app.data.scenario import scenario_tracks
+from app.domain.base import DomainModel
 from app.domain.image import ImageMeta
 from app.domain.report import ReportClaim
+from app.domain.scenario import Scenario
+from app.domain.track import MapTrack
 from app.domain.watch import (
     AgentTraceEvent,
+    ExpectedVehicle,
+    ExpectedVehicleEvent,
     FrameAnalyzedEvent,
     LevelChangedEvent,
     OperatorAlertEvent,
+    OperatorMessageEvent,
+    OperatorReplyEvent,
     ReportJudgment,
+    ScenarioLoadedEvent,
     SupervisorDecisionEvent,
     TickCompletedEvent,
     TickStartedEvent,
@@ -52,6 +63,7 @@ from app.services.tracks import tracks_at
 logger = logging.getLogger(__name__)
 EventSink = Callable[[Any], None]
 RECENT_EVENTS_KEPT = 15
+MAX_WATCHERS = 8  # one per sector at most
 EARLIER_REPORTS_MIN = 120  # watchers compare new reports with their sector's reports this far back
 
 
@@ -65,9 +77,18 @@ class WatchRunner:
         llm: ChatLLM | None,
         on_event: EventSink,
         detector: Detector | None = None,
+        scenario: Scenario | None = None,
     ) -> None:
+        """`scenario`: scripted operator messages; its extra tracks must already be in `repo`."""
         self.repo, self.settings, self.llm, self.emit = repo, settings, llm, on_event
         self.detector = detector
+        self.scenario = scenario
+        self._scenario_sent = False
+        self._dedicated: dict[str, str] = {}  # watcher -> the one sector it checks every tick
+        self.expected: list[ExpectedVehicle] = []  # vehicles the operator announced
+        self._held: list[DomainModel] = []  # events made before this tick's tick_started
+        self._held_changes: list[LevelChange] = []
+        self._now = 0
         self.registry = CarRegistry()
         self.trackers = TrackerBoard(settings.tracker_slots)
         self.alerts = AlertBoard()
@@ -91,8 +112,11 @@ class WatchRunner:
     async def tick(self, minute: int) -> None:
         """Run one 5-minute tick end to end."""
         started = time.perf_counter()
+        self._now = minute
         tick = to_hhmm(minute)
         frames = [m for m in self.repo.list_images() if m.capture_min == minute]
+        # The operator's messages come first: a watcher they create already works this tick.
+        await self._operator_turns(tick, minute)
         checks = self._schedule(frames)
         active = sum(1 for t in self.repo.tracks.values() if watch_svc.track_until(t, minute))
         self.emit(
@@ -103,10 +127,12 @@ class WatchRunner:
                 checks=checks,
             )
         )
+        self._release_held(tick)
         frame_events = [await self._analyze_frame(f, minute) for f in frames]
         for fe in frame_events:
             self.emit(fe)
         rows = self._rows(minute)
+        self._release_held(tick)
         ctx = WatchContext(
             repo=self.repo,
             settings=self.settings,
@@ -173,7 +199,14 @@ class WatchRunner:
         """Watcher -> sector to check: a frame's sector first, else the next in its rotation."""
         frame_sectors = [f.zone for f in frames if f.zone]
         checks: dict[str, str] = {}
-        for wid, area in self.groups.items():
+        dedicated = set(self._dedicated.values())
+        for wid, full_area in self.groups.items():
+            # Sectors with a dedicated watcher are left to it.
+            area = (
+                full_area
+                if wid in self._dedicated
+                else [s for s in full_area if s not in dedicated] or full_area
+            )
             with_frame = [s for s in frame_sectors if s in area]
             idx = area.index(with_frame[0]) if with_frame else self._next[wid] % len(area)
             checks[wid] = area[idx]
@@ -268,7 +301,146 @@ class WatchRunner:
                     group=groups.get(tid),
                 )
             )
-        return rows
+        return self._apply_expected(minute, rows)
+
+    # ---- the operator: messages to the supervisor, dedicated watchers, announced vehicles ----
+
+    def _apply_expected(self, minute: int, rows: list[VehicleRow]) -> list[VehicleRow]:
+        """Match announcements to tracks, then keep announced vehicles LOW (the operator is
+        trusted; the user's rule: always LOW once announced)."""
+        zones, tick = self.repo.scene.zones, to_hhmm(minute)
+        taken = {e.track_id for e in self.expected if e.track_id}
+        for exp in self.expected:
+            if exp.track_id is None:
+                tid = watch_svc.match_expected(exp, rows, self.repo.tracks, zones, taken)
+                if tid is not None:
+                    exp.track_id = tid
+                    taken.add(tid)
+                    self._held.append(ExpectedVehicleEvent(tick=tick, vehicle=exp.model_copy()))
+                    self._remember(tick, "expected_vehicle_seen", tid, exp.expected_id)
+        by_track = {e.track_id: e for e in self.expected if e.track_id}
+        out = []
+        for row in rows:
+            announced = by_track.get(row.track_id)
+            if announced is not None:
+                row = watch_svc.mark_expected(row, announced)
+                if self.registry.effective_level(row.track_id) != "LOW":
+                    reason = f"{announced.expected_id}: announced by the operator"
+                    change = self.registry.set_level(row.track_id, "LOW", "operator", reason)
+                    if change:
+                        self._held_changes.append(change)
+            out.append(row)
+        return out
+
+    def _release_held(self, tick: str) -> None:
+        """Emit events made before this tick's tick_started (or while building rows)."""
+        if self.scenario is not None and not self._scenario_sent:
+            self._scenario_sent = True
+            self.emit(
+                ScenarioLoadedEvent(
+                    tick=tick,
+                    name=self.scenario.name,
+                    description=self.scenario.description,
+                    extra_tracks=[
+                        MapTrack(track_id=t.track_id, points=t.points, image_id=None)
+                        for t in scenario_tracks(self.scenario)
+                    ],
+                )
+            )
+        held, self._held = self._held, []
+        for event in held:
+            self.emit(event)
+        changes, self._held_changes = self._held_changes, []
+        for change in changes:
+            self._emit_change(tick, change)
+
+    async def _operator_turns(self, tick: str, minute: int) -> None:
+        """The supervisor answers every operator message written in this tick's window."""
+        if self.scenario is None:
+            return
+        due = [
+            m
+            for m in self.scenario.operator_messages
+            if minute - watch_svc.TICK_MIN <= to_minutes(m.time) < minute
+        ]
+        if not due:
+            return
+        rows = self._rows(minute)
+        ctx = WatchContext(
+            repo=self.repo,
+            settings=self.settings,
+            tick_min=minute,
+            claims=self.claims,
+            registry=self.registry,
+            trackers=self.trackers,
+            alerts=self.alerts,
+            rows={r.track_id: r for r in rows},
+        )
+        board = OperatorBoard(self._create_watcher, self._register_expected)
+        for msg in due:
+            self._held.append(OperatorMessageEvent(tick=tick, time=msg.time, text=msg.text))
+            self._remember(tick, "operator_message", "", msg.text)
+            inp = OperatorInput(
+                tick=tick,
+                time=msg.time,
+                text=msg.text,
+                layout={w: list(s) for w, s in self.groups.items()},
+                dedicated=dict(self._dedicated),
+                flagged=self._suspicious(rows, {}),
+                expected=[e.model_copy() for e in self.expected],
+            )
+            out = await run_operator_turn(self.llm, ctx, inp, board)
+            self._held.append(
+                OperatorReplyEvent(
+                    tick=tick,
+                    time=msg.time,
+                    generated_by=out.generated_by,
+                    duration_ms=out.duration_ms,
+                    reply=out.reply,
+                    actions=out.actions,
+                    tool_calls=out.tool_calls,
+                    warnings=out.warnings,
+                )
+            )
+            if out.system:
+                self._held.append(
+                    AgentTraceEvent(
+                        tick=tick,
+                        agent="supervisor:operator",
+                        prompt_file=operator_mod.PROMPT,
+                        system_prompt=out.system,
+                        user_message=out.user,
+                        steps=out.trace,
+                        output={"reply": out.reply},
+                        generated_by=out.generated_by,
+                        duration_ms=out.duration_ms,
+                    )
+                )
+
+    def _create_watcher(self, sector: str, reason: str) -> str:
+        """A new watcher that checks `sector` every tick (the operator asked for it)."""
+        for wid, s in self._dedicated.items():
+            if s == sector:
+                raise BoardError(f"{wid} already watches {sector} every tick")
+        if len(self.groups) >= MAX_WATCHERS:
+            raise BoardError(f"at most {MAX_WATCHERS} watchers")
+        wid = f"W{len(self.groups) + 1}"
+        self.groups[wid] = [sector]
+        self._next[wid] = 0
+        self._dedicated[wid] = sector
+        self._remember(to_hhmm(self._now), "watcher_created", "", f"{wid} for {sector}: {reason}")
+        return wid
+
+    def _register_expected(self, vehicle: ExpectedVehicle) -> ExpectedVehicle:
+        """Record an announced vehicle; it is matched to a track when one appears."""
+        registered = vehicle.model_copy(update={"expected_id": f"EXP-{len(self.expected) + 1}"})
+        self.expected.append(registered)
+        tick = to_hhmm(self._now)
+        self._held.append(ExpectedVehicleEvent(tick=tick, vehicle=registered.model_copy()))
+        self._remember(
+            tick, "expected_vehicle", "", f"{registered.expected_id}: {registered.description}"
+        )
+        return registered
 
     def _sector_at(self, track_id: str, minute: int) -> str | None:
         point = next((p for p in self.repo.tracks[track_id].points if p.time_min == minute), None)
