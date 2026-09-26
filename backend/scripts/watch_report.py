@@ -83,6 +83,9 @@ def verdict_table(output: Event, rows: dict[str, Event]) -> list[str]:
         "|---|---|---|---|---|",
     ]
     for v in output.get("vehicles", []):
+        # Raw model output may omit track_id; the agent derives it from the TRK-* evidence.
+        trk = [e[4:] for e in v.get("evidence_ids") or [] if str(e).startswith("TRK-")]
+        v = {**v, "track_id": v.get("track_id") or (trk[0] if trk else "?")}
         row = rows.get(v["track_id"], {})
         facts = row.get("one_liner", "")
         if row:
