@@ -25,7 +25,8 @@ interface Props {
 export function MapLegend({ visible, onToggle, allTracks, onAllTracks }: Props) {
   const lg = t.fieldMap.legend
   return (
-    <div className="flex flex-wrap items-center gap-x-1 gap-y-1 rounded-lg border bg-card/80 px-1.5 py-1 text-[11px] text-muted-foreground backdrop-blur">
+    <div className="flex w-56 flex-col gap-0.5 rounded-lg border bg-card/85 p-2 text-[11px] text-muted-foreground backdrop-blur">
+      <span className="px-1.5 pb-1 text-[10px] font-medium tracking-wider">{lg.title.toLocaleUpperCase('tr-TR')}</span>
       {ITEMS.map(({ key, label, swatch }) => {
         const on = visible[key]
         return (
@@ -37,25 +38,29 @@ export function MapLegend({ visible, onToggle, allTracks, onAllTracks }: Props) 
             title={lg.toggle}
             onClick={() => onToggle(key)}
             className={cn(
-              'gap-1.5 px-1.5 text-[11px] font-normal text-muted-foreground',
+              'justify-start gap-2 px-1.5 text-[11px] font-normal text-muted-foreground',
               !on && 'line-through opacity-50',
             )}
           >
-            <span aria-hidden className={swatch} />
+            <span aria-hidden className="flex w-4 justify-center">
+              <span className={swatch} />
+            </span>
             {label(lg)}
           </Button>
         )
       })}
-      <span aria-hidden className="mx-1 h-4 w-px bg-border" />
+      <span aria-hidden className="my-1 h-px bg-border" />
       <Button
         size="xs"
         variant={allTracks ? 'secondary' : 'ghost'}
         aria-pressed={allTracks}
         title={lg.allTracksHint}
         onClick={onAllTracks}
-        className={cn('gap-1.5 px-1.5 text-[11px] font-normal', allTracks ? 'text-emerald-300' : 'text-muted-foreground')}
+        className={cn('justify-start gap-2 px-1.5 text-[11px] font-normal', allTracks ? 'text-emerald-300' : 'text-muted-foreground')}
       >
-        <Route />
+        <span aria-hidden className="flex w-4 justify-center">
+          <Route />
+        </span>
         {lg.allTracks}
       </Button>
     </div>

@@ -150,7 +150,7 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
         </div>
       </div>
 
-      <div className="absolute top-3 bottom-[5.5rem] left-3 flex flex-col justify-between gap-3">
+      <div className="absolute top-3 bottom-[5.5rem] left-3 flex min-h-0 flex-col gap-3 overflow-y-auto [scrollbar-width:thin]">
         <ZonePanel
           zones={scene.zones.map((z) => z.name)}
           activeZone={zone}
@@ -159,7 +159,7 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
           open={zonesOpen}
           onToggle={() => setZonesOpen((o) => !o)}
         />
-        <div className="max-w-md">
+        <div>
           <MapLegend
             visible={visible}
             onToggle={(k) => setVisible((v) => ({ ...v, [k]: !v[k] }))}

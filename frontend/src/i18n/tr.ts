@@ -202,8 +202,9 @@ export const tr = {
     timeline: 'Zaman çizelgesi',
     lanes: { tracks: 'aktif iz', frames: 'kare', reports: 'rapor' },
     legend: {
+      title: 'Katmanlar',
       zone: 'bölge merkezi',
-      track: 'hareket kaydı (tracks.csv)',
+      track: 'hareket izi',
       frame: 'görüntü karesi',
       official: 'resmi rapor',
       thirdParty: '3. taraf rapor',
