@@ -73,3 +73,22 @@ export function trailAt(samples: Sample[], minute: number, windowMin: number): P
   const k = (since - a.t) / (b.t - a.t || 1)
   return [{ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k }, ...path.slice(1)]
 }
+
+/** SVG path through `pts` as a smooth curve (Catmull-Rom → cubic Bézier). It passes through
+ *  every sample, so positions stay exact; only the corners between samples are rounded. */
+export function smoothPath(pts: Pt[]): string {
+  const f = (v: number) => v.toFixed(1)
+  const first = pts[0]
+  if (!first) return ''
+  let d = `M${f(first.x)},${f(first.y)}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p1 = pts[i] as Pt
+    const p2 = pts[i + 1] as Pt
+    const p0 = pts[i - 1] ?? p1
+    const p3 = pts[i + 2] ?? p2
+    const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 }
+    const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 }
+    d += ` C${f(c1.x)},${f(c1.y)} ${f(c2.x)},${f(c2.y)} ${f(p2.x)},${f(p2.y)}`
+  }
+  return d
+}

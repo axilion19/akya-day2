@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { useFieldMapModel } from '@/hooks/useFieldMapModel'
 import { useMapViewport } from '@/hooks/useMapViewport'
 import { t } from '@/i18n'
-import { RISK_STYLES } from '@/lib/risk'
 import type { VehicleState } from '@/lib/watchDemo'
 import { SectorLayer } from './SectorLayer'
 import { VehicleLayer } from './VehicleLayer'
@@ -43,35 +42,9 @@ export function WatchMap(props: Props) {
         <VehicleLayer tracks={model.tracks} minute={minute} mpp={mpp} levels={levels} focus={focus} selectedId={selectedId} onSelect={onSelect} />
         <BaseMarker position={scene.base.position} mpp={mpp} />
       </svg>
-      <MapKey />
       <Button size="icon-sm" variant="outline" className="absolute right-3 bottom-3 bg-card/85" onClick={fit} aria-label={t.fieldMap.fit} title={t.fieldMap.fit}>
         <Maximize aria-hidden />
       </Button>
-    </div>
-  )
-}
-
-function MapKey() {
-  const l = t.watch.legend
-  const dot = (color: string, label: string) => (
-    <span className="flex items-center gap-1.5">
-      <span className="size-2.5 rounded-full" style={{ background: color }} />
-      {label}
-    </span>
-  )
-  return (
-    <div className="absolute bottom-3 left-3 flex flex-wrap gap-3 rounded-md border bg-card/85 px-3 py-2 text-xs text-muted-foreground backdrop-blur">
-      {dot(RISK_STYLES.LOW.stroke, l.low)}
-      {dot(RISK_STYLES.MEDIUM.stroke, l.medium)}
-      {dot(RISK_STYLES.HIGH.stroke, l.high)}
-      <span className="flex items-center gap-1.5">
-        <span className="size-3 rounded-full border border-dashed border-amber-600" />
-        {l.pending}
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="h-2.5 w-4 border border-cyan-400/60 bg-cyan-400/10" />
-        {l.checked}
-      </span>
     </div>
   )
 }

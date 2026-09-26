@@ -380,7 +380,6 @@ export const tr = {
       note: 'not',
       notSeen: 'Bu araç henüz bir gözcü tarafından değerlendirilmedi.',
     },
-    legend: { low: 'düşük', medium: 'orta', high: 'yüksek', pending: 'onay bekliyor', checked: 'kontrol edilen sektör' },
   },
   common: { retry: 'Tekrar dene', empty: 'Veri yok', raw: 'Ham veri' },
 } as const
