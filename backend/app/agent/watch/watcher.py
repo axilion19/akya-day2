@@ -12,7 +12,12 @@ from typing import Any
 from app.agent.llm_client import ChatLLM
 from app.agent.watch import tools as t
 from app.agent.watch.loop import SubmitError, fill_pattern_track_ids, run_tool_loop
-from app.agent.watch.prompts import render
+from app.agent.watch.prompts import (
+    LANGUAGE_NAMES,
+    PROMPT_FILES,
+    render_with_fallback,
+    threshold_vars,
+)
 from app.agent.watch.registry import level_index
 from app.domain.report import ReportClaim
 from app.domain.tuning import AgentTuning
@@ -28,9 +33,8 @@ from app.domain.watch import (
 from app.services.tuning import DEFAULT_TUNING
 from app.services.watch import gated_level, rubric_watch_level
 
-PROMPT = "watcher_v7"
+PROMPT = PROMPT_FILES["watcher"]
 MAX_TOKENS = 12000
-LANGUAGE_NAMES = {"tr": "Turkish", "en": "English"}
 
 
 @dataclass
@@ -128,19 +132,20 @@ def build_user_message(inp: WatcherInput) -> str:
     )
 
 
-def system_prompt(ctx: t.WatchContext, watcher_id: str, area: list[str]) -> str:
-    """The watcher's fixed system prompt for its area (stable across ticks)."""
+def system_prompt(ctx: t.WatchContext, watcher_id: str, area: list[str]) -> tuple[str, list[str]]:
+    """The watcher's fixed system prompt for its area (stable across ticks) and any warnings."""
     base = ctx.repo.scene.base
-    return render(
-        PROMPT,
-        watcher_id=watcher_id,
-        sector_names=", ".join(area),
-        base_name=base.name,
-        base_lat=base.position.lat,
-        base_lon=base.position.lon,
-        max_tool_calls=ctx.settings.watcher_max_tool_calls,
-        output_language=LANGUAGE_NAMES[ctx.settings.brief_language],
-    )
+    values: dict[str, object] = {
+        "watcher_id": watcher_id,
+        "sector_names": ", ".join(area),
+        "base_name": base.name,
+        "base_lat": base.position.lat,
+        "base_lon": base.position.lon,
+        "max_tool_calls": ctx.settings.watcher_max_tool_calls,
+        "output_language": LANGUAGE_NAMES[ctx.settings.brief_language],
+        **threshold_vars(ctx.tuning),
+    }
+    return render_with_fallback(PROMPT, ctx.tuning.prompts.watcher, values)
 
 
 def _checker(ctx: t.WatchContext, inp: WatcherInput) -> Any:
@@ -227,7 +232,8 @@ async def run_watcher(
         "get_notes": lambda a: t.get_notes(ctx, a),
         "get_reports": lambda a: t.get_reports(ctx, a),
     }
-    system, user = system_prompt(ctx, inp.watcher_id, inp.area), build_user_message(inp)
+    system, prompt_warnings = system_prompt(ctx, inp.watcher_id, inp.area)
+    user = build_user_message(inp)
     loop = await run_tool_loop(
         llm,
         system=system,
@@ -245,10 +251,10 @@ async def run_watcher(
     generated_by: GeneratedBy
     if loop.output is None:
         report, generated_by = fallback_report(inp), "fallback"
-        warnings = [*loop.warnings, "rubric fallback used"]
+        warnings = [*prompt_warnings, *loop.warnings, "rubric fallback used"]
     else:
         report, clamps = enforce_rules(loop.output, inp.rows)
-        generated_by, warnings = "llm", loop.warnings + clamps
+        generated_by, warnings = "llm", prompt_warnings + loop.warnings + clamps
     return WatcherOutcome(
         report,
         generated_by,
