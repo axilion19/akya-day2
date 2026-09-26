@@ -2,7 +2,7 @@
 
 > 🇹🇷 Türkçe sürüm için: [aşağıya bakın](#tr).
 
-**Status:** agreed design, not implemented yet. Contracts (models, SSE events, tool schemas) go into `docs/AGENT_DESIGN.md` in the same change as the first watch-mode code; until then, this file is the reference for how the agents fit together.
+**Status:** agreed design, not implemented yet. Contracts (models, SSE events, tool schemas) go into `docs/AGENT_DESIGN.md` in the same change as the first watch-mode code; until then, this file is the reference for how the agents fit together. Prompts, tools, models and example inputs/outputs: [`AGENT_PROMPTS_AND_TOOLS.md`](AGENT_PROMPTS_AND_TOOLS.md).
 
 **In one paragraph:** we replay the monitoring day on a clock that advances in 5-minute steps. Eight **watcher** agents each observe one sector around the base and rate every vehicle in it as LOW, MEDIUM or HIGH. Watchers leave notes on vehicles in a shared **car registry**, so when a vehicle drives into the next sector, the next watcher knows its history. At every step, each watcher sends a short status message to a **head supervisor** agent. The supervisor looks at the whole picture, spots patterns no single sector can see, and dispatches a **tracker** agent for HIGH-risk vehicles, which then reports the vehicle's position to the authorities (mocked).
 
@@ -109,7 +109,7 @@ The 8 watchers run in parallel, so one tick costs about one watcher call plus on
 | **Sees** | Vehicles currently in its sector with code-computed features; route so far + notes for new arrivals; frame results when a frame arrives; field reports that pass the prefilter for its sector and time window. |
 | **Decides** | A level per vehicle, with a one-sentence reason and evidence IDs. |
 | **Writes** | Notes and level changes in the car registry; one message per tick to the supervisor. |
-| **Tools** | `get_route(track_id)` (route so far + features + behavior class), `get_notes(track_id)`, `add_note(track_id, level, reason, evidence_ids)`, `get_reports(sector)`. |
+| **Tools** | `get_route(track_id)` (route so far + features + behavior class), `get_notes(track_id)`, `get_reports(...)`, and `submit_watch_report(...)` to finish the tick (levels, reasons and new notes in one call). Full schemas: [`AGENT_PROMPTS_AND_TOOLS.md`](AGENT_PROMPTS_AND_TOOLS.md) §4. |
 | **Cannot** | Lower a vehicle's level (only the supervisor can lower a HIGH). Trust a report over its own sensors. |
 | **If the LLM fails** | The deterministic rubric sets the levels for that tick and the timeline shows a warning. The demo never stalls. |
 
@@ -125,7 +125,7 @@ What each level means for the flow:
 |---|---|
 | **Sees** | The latest message from each of the 8 watchers + a short list of recent events (new HIGHs, trackers out, alerts sent). Its prompt does **not** grow over the day: it always holds the current board, not the full history. |
 | **Does what only it can** | Spots cross-sector patterns (e.g. three MEDIUM vehicles from different sectors closing on the base in the same half hour); decides which HIGH vehicles get one of the limited trackers; judges area-wide reports ("friendly exercise in the region all day") that no single sector should judge. |
-| **Tools** | `get_route(track_id)`, `get_notes(track_id)`, `set_level(track_id, level, reason)` (the only way to lower a HIGH), `dispatch_tracker(track_id, suspicion)`, `notify_authorities(track_id, suspicion)`. |
+| **Tools** | `get_route(track_id)`, `get_notes(track_id)`, `set_level(track_id, level, reason)` (the only way to lower a HIGH), `dispatch_tracker(track_id, suspicion)`, `recall_tracker(tracker_id, reason)`, `notify_authorities(track_ids, urgency, headline, suspicion)`, and `submit_supervisor_decision(...)` to finish the tick. Full schemas: [`AGENT_PROMPTS_AND_TOOLS.md`](AGENT_PROMPTS_AND_TOOLS.md) §5. |
 | **Must state** | For every dispatch or escalation: the suspicion (what it believes), the evidence IDs, and what would clear the vehicle. The validator rejects a dispatch without them. |
 
 ### Tracker (later; needs mock data)
@@ -169,7 +169,7 @@ Sticks to one vehicle for as long as possible and sends position updates to the 
 }
 ```
 
-Level rules: watchers can only raise a level; a change needs two consecutive ticks to stick (no flicker); only the supervisor lowers a HIGH; a field report never lowers a level on its own.
+Level rules: watchers can only raise a level; a change needs two consecutive ticks to stick (no flicker); only the supervisor lowers a HIGH; the supervisor may act on a first-tick HIGH when it is part of a cross-sector pattern; a field report never lowers a level on its own.
 
 ---
 
@@ -351,7 +351,7 @@ sequenceDiagram
 | **Görür** | Sektöründeki araçlar ve kodun hesapladığı özellikleri; yeni gelenler için o ana kadarki rota + notlar; görüntü geldiğinde görüntü sonuçları; kendi sektörü ve zaman penceresi için ön filtreden geçen saha raporları. |
 | **Karar verir** | Araç başına bir seviye, tek cümlelik gerekçe ve kanıt kimlikleriyle. |
 | **Yazar** | Araç kaydına notlar ve seviye değişiklikleri; her tikte baş denetçiye bir mesaj. |
-| **Araçları** | `get_route(track_id)` (o ana kadarki rota + özellikler + davranış sınıfı), `get_notes(track_id)`, `add_note(track_id, level, reason, evidence_ids)`, `get_reports(sector)`. |
+| **Araçları** | `get_route(track_id)` (o ana kadarki rota + özellikler + davranış sınıfı), `get_notes(track_id)`, `get_reports(...)` ve tiki bitirmek için `submit_watch_report(...)` (seviyeler, gerekçeler ve yeni notlar tek çağrıda). Tam şemalar: [`AGENT_PROMPTS_AND_TOOLS.md`](AGENT_PROMPTS_AND_TOOLS.md) §4. |
 | **Yapamaz** | Bir aracın seviyesini düşüremez (bir HIGH'ı yalnızca baş denetçi düşürebilir). Bir rapora kendi sensörlerinden fazla güvenemez. |
 | **LLM başarısız olursa** | O tik için seviyeleri deterministik puanlama belirler ve zaman çizelgesinde bir uyarı görünür. Demo asla takılmaz. |
 
@@ -367,7 +367,7 @@ Her seviyenin akıştaki anlamı:
 |---|---|
 | **Görür** | 8 gözcünün her birinden gelen en son mesaj + kısa bir son olaylar listesi (yeni HIGH'lar, sahadaki takipçiler, gönderilen alarmlar). Prompt'u gün boyunca **büyümez**: her zaman tüm geçmişi değil, güncel tabloyu tutar. |
 | **Yalnızca onun yapabileceği işler** | Sektörler arası örüntüleri yakalar (ör. farklı sektörlerden üç MEDIUM aracın aynı yarım saatte üsse yaklaşması); sınırlı sayıdaki takipçinin hangi HIGH araçlara verileceğine karar verir; tek bir sektörün yargılamaması gereken bölge çapındaki raporları değerlendirir ("gün boyu bölgede dost unsurlarla tatbikat var"). |
-| **Araçları** | `get_route(track_id)`, `get_notes(track_id)`, `set_level(track_id, level, reason)` (bir HIGH'ı düşürmenin tek yolu), `dispatch_tracker(track_id, suspicion)`, `notify_authorities(track_id, suspicion)`. |
+| **Araçları** | `get_route(track_id)`, `get_notes(track_id)`, `set_level(track_id, level, reason)` (bir HIGH'ı düşürmenin tek yolu), `dispatch_tracker(track_id, suspicion)`, `recall_tracker(tracker_id, reason)`, `notify_authorities(track_ids, urgency, headline, suspicion)` ve tiki bitirmek için `submit_supervisor_decision(...)`. Tam şemalar: [`AGENT_PROMPTS_AND_TOOLS.md`](AGENT_PROMPTS_AND_TOOLS.md) §5. |
 | **Belirtmek zorundadır** | Her görevlendirme veya eskalasyonda: şüphenin ne olduğu, kanıt kimlikleri ve aracı neyin temize çıkaracağı. Bunlar olmadan yapılan bir görevlendirmeyi doğrulayıcı reddeder. |
 
 ### Takipçi (sonra; mock veri gerektirir)
@@ -411,7 +411,7 @@ Bir araca mümkün olduğunca uzun süre yapışır ve yetkililer kutusuna konum
 }
 ```
 
-Seviye kuralları: gözcüler seviyeyi yalnızca yükseltebilir; bir değişikliğin kalıcı olması için iki ardışık tik gerekir (seviye sürekli gidip gelmesin diye); bir HIGH'ı yalnızca baş denetçi düşürür; bir saha raporu tek başına seviyeyi asla düşürmez.
+Seviye kuralları: gözcüler seviyeyi yalnızca yükseltebilir; bir değişikliğin kalıcı olması için iki ardışık tik gerekir (seviye sürekli gidip gelmesin diye); bir HIGH'ı yalnızca baş denetçi düşürür; baş denetçi, sektörler arası bir örüntünün parçasıysa ilk tikteki bir HIGH için de harekete geçebilir; bir saha raporu tek başına seviyeyi asla düşürmez.
 
 ---
 
