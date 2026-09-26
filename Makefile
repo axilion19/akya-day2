@@ -4,7 +4,7 @@
 BACKEND := uv --directory backend
 FRONTEND := pnpm --dir frontend
 
-.PHONY: install install-detector dev dev-api dev-web test lint format gen-types mock-data mock detections precompute watch-demo
+.PHONY: install install-detector dev dev-api dev-web test lint format gen-types mock-data mock detections precompute watch-demo watch-eval
 
 install:  ## Install backend and frontend dependencies
 	$(BACKEND) sync
@@ -53,6 +53,9 @@ WATCHERS ?= 4
 SAVE ?=
 watch-demo:  ## Watch mode on the real data (LLM + YOLO from .env); FROM/TO HH:MM, WATCHERS 1-8, SAVE=name -> UI recording
 	$(BACKEND) run python -m scripts.watch_demo --start $(FROM) --end $(TO) --watchers $(WATCHERS) $(if $(SAVE),--save-as $(SAVE),)
+
+watch-eval:  ## Score a recorded watch run against the code ground truth: REC=watch_1010-1110 (OUT=file.md)
+	$(BACKEND) run python -m scripts.watch_eval recordings/$(REC).jsonl $(if $(OUT),--out $(OUT),)
 
 detections:  ## Run the YOLO model on every frame -> backend/.cache/detections_<weights>.json
 	$(BACKEND) run python -m scripts.precompute_detections
