@@ -56,6 +56,8 @@ class VehicleRow(DomainModel):
     long_stops_within_6km: int
     behavior_class: BehaviorClass
     rubric: Rubric
+    # Code gate (services/watch.is_imminent): only imminent vehicles may be HIGH.
+    imminent: bool = False
     registry_level: WatchLevel
     pending_level: WatchLevel | None
     notes_count: int

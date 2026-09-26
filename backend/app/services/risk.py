@@ -13,6 +13,39 @@ MOVING_MS = 1.0
 HEADING_TOLERANCE_DEG = 30
 
 
+# HIGH/CRITICAL means an imminent threat, not "approaching": roads lead to the base and about half
+# the vehicles in the data drive toward it at some point. One definition for the whole app.
+IMMINENT_DIST_M = 2000  # closing on the base and this close ...
+IMMINENT_ETA_MIN = 8.0  # ... or arriving this soon
+IMMINENT_HEADING_DEG = 45  # driving roughly at the base
+AT_BASE_M = 1000  # this close to the base is HIGH-eligible whatever it does
+
+
+def is_imminent(
+    dist_m: float, closing_now: bool, heading_vs_base_deg: float | None, eta_min: float | None
+) -> bool:
+    """At the base, or closing on it now, pointed at it, and within IMMINENT_DIST_M or
+    IMMINENT_ETA_MIN. Distances in m, angles in degrees, ETA in minutes."""
+    if dist_m <= AT_BASE_M:
+        return True
+    pointed = heading_vs_base_deg is not None and heading_vs_base_deg <= IMMINENT_HEADING_DEG
+    soon = eta_min is not None and eta_min <= IMMINENT_ETA_MIN
+    return closing_now and pointed and (dist_m <= IMMINENT_DIST_M or soon)
+
+
+def motion_is_imminent(motion: MotionProfile | None, dist_m: float | None) -> bool:
+    """`is_imminent` for a frame vehicle: closing now = moving at the base in the last 10 min."""
+    if motion is None:
+        return dist_m is not None and dist_m <= AT_BASE_M
+    heading_diff = (
+        None
+        if motion.heading_deg is None
+        else angle_diff_deg(motion.heading_deg, motion.bearing_to_base_deg)
+    )
+    moving = motion.last10_speed_ms >= MOVING_MS
+    return is_imminent(motion.dist_now_m, moving, heading_diff, motion.eta_to_base_min)
+
+
 def level_for(score: int) -> RiskLevel:
     """0-24 LOW, 25-49 MEDIUM, 50-74 HIGH, 75-100 CRITICAL."""
     return RISK_LEVELS[min(3, score // 25)]
@@ -117,11 +150,17 @@ def score_vehicle(
         )
 
     score = min(100, sum(f.points for f in factors))
+    level = level_for(score)
+    if level in ("HIGH", "CRITICAL") and not motion_is_imminent(motion, dist):
+        level = "MEDIUM"
+        factors.append(
+            RiskFactor(name="not_imminent", points=0, detail=f"score {score}: capped at MEDIUM")
+        )
     return VehicleRisk(
         detection_id=detection.id,
         track_id=match.track_id if match else None,
         score=score,
-        level=level_for(score),
+        level=level,
         factors=factors,
     )
 

@@ -28,6 +28,7 @@ from app.domain.watch import (
 from app.services.geo import angle_diff_deg, bearing_deg, haversine_m, pixel_to_latlon
 from app.services.motion import motion_profile
 from app.services.risk import TYPE_POINTS, distance_factor, level_for, motion_factors
+from app.services.risk import is_imminent as risk_is_imminent
 from app.services.tracks import match_detections, tracks_at
 
 WATCH_LEVEL_OF: dict[RiskLevel, WatchLevel] = {
@@ -119,6 +120,24 @@ def track_rubric(motion: MotionProfile, vehicle_type: str | None = None) -> Rubr
         )
     score = min(100, sum(f.points for f in factors))
     return Rubric(score=score, level=level_for(score), factors=factors)
+
+
+def is_imminent(row: VehicleRow) -> bool:
+    """Whether a vehicle may be HIGH (`services.risk.is_imminent` on the row's facts)."""
+    closing_now = row.moving and row.closing_last5_m_per_min > 0
+    return risk_is_imminent(
+        row.dist_to_base_m, closing_now, row.heading_vs_base_deg, row.eta_to_base_min
+    )
+
+
+def gated_level(level: WatchLevel, row: VehicleRow) -> WatchLevel:
+    """`level`, capped at MEDIUM unless the vehicle is imminent."""
+    return "MEDIUM" if level == "HIGH" and not row.imminent else level
+
+
+def rubric_watch_level(row: VehicleRow) -> WatchLevel:
+    """The rubric's level on the watch scale (CRITICAL -> HIGH), gated by imminence."""
+    return gated_level(WATCH_LEVEL_OF[row.rubric.level], row)
 
 
 def watch_level_of(level: RiskLevel) -> WatchLevel:
@@ -231,11 +250,13 @@ def vehicle_row(
         long_stops_within_6km=len(long_stops),
         behavior_class=behavior_class(track.points, base),
         rubric=track_rubric(motion, vehicle_type),
+        imminent=False,
         registry_level=registry_level,
         pending_level=pending_level,
         notes_count=notes_count,
         one_liner="",
     )
+    row = row.model_copy(update={"imminent": is_imminent(row)})
     return row.model_copy(update={"one_liner": one_liner(row, lang)})
 
 

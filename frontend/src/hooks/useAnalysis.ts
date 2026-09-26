@@ -1,10 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { ApiError, USE_MOCKS } from '@/api/client'
 import { createAnalysis, getAnalysis } from '@/api/endpoints'
 import type { Analysis } from '@/api/types'
 import { mockAnalyses } from '@/mocks'
 
-async function fetchAnalysis(imageId: string): Promise<Analysis> {
+export async function fetchAnalysis(imageId: string): Promise<Analysis> {
   if (USE_MOCKS) {
     const analysis = mockAnalyses[imageId]
     if (!analysis) throw new ApiError(404, `no mock analysis for ${imageId}`)
@@ -22,5 +22,17 @@ export function useAnalysis(imageId: string) {
     enabled: imageId !== '',
     retry: false,
     staleTime: Infinity,
+  })
+}
+
+/** Analyses of several frames in parallel (same cache as useAnalysis). */
+export function useAnalyses(imageIds: string[]) {
+  return useQueries({
+    queries: imageIds.map((imageId) => ({
+      queryKey: ['analysis', imageId, USE_MOCKS],
+      queryFn: () => fetchAnalysis(imageId),
+      retry: false,
+      staleTime: Infinity,
+    })),
   })
 }

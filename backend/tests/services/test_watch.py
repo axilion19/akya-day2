@@ -129,3 +129,51 @@ def test_parked_row_has_no_heading_and_counts_current_stop() -> None:
 
 def test_ticks_are_five_minutes_inclusive() -> None:
     assert w.ticks(13 * 60 + 52, 14 * 60 + 5) == [835, 840, 845]
+
+
+def test_imminent_needs_closing_now_and_close_or_soon() -> None:
+    far = track([(2400 + 1800 * (9 - i), 0) for i in range(10)])  # 6 m/s, 2.4 km out: ETA ~6.7 min
+    row = w.vehicle_row(
+        far,
+        far.points[-1].time_min,
+        BASE,
+        ZONES,
+        stop_speed_ms=1.0,
+        zone_radius_m=2000,
+        prev_sector="E",
+        registry_level="LOW",
+        pending_level=None,
+        notes_count=0,
+        lang="en",
+    )
+    assert row.imminent  # ETA within 8 min
+    slow = track([(6000 - 60 * i, 0) for i in range(10)])  # 5.5 km out, slow: not imminent
+    row = w.vehicle_row(
+        slow,
+        slow.points[-1].time_min,
+        BASE,
+        ZONES,
+        stop_speed_ms=1.0,
+        zone_radius_m=2000,
+        prev_sector="E",
+        registry_level="LOW",
+        pending_level=None,
+        notes_count=0,
+        lang="en",
+    )
+    assert not row.imminent and w.gated_level("HIGH", row) == "MEDIUM"
+    parked = track([(800, 0)] * 6)  # parked 800 m from the base: HIGH-eligible
+    row = w.vehicle_row(
+        parked,
+        parked.points[-1].time_min,
+        BASE,
+        ZONES,
+        stop_speed_ms=1.0,
+        zone_radius_m=2000,
+        prev_sector="E",
+        registry_level="LOW",
+        pending_level=None,
+        notes_count=0,
+        lang="en",
+    )
+    assert row.imminent
