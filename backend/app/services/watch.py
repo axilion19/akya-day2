@@ -121,6 +121,39 @@ def track_rubric(motion: MotionProfile, vehicle_type: str | None = None) -> Rubr
     return Rubric(score=score, level=level_for(score), factors=factors)
 
 
+# HIGH means an imminent threat, not "approaching": roads lead to the base and about half the
+# vehicles in the data drive toward it at some point. These gates decide what may be HIGH.
+IMMINENT_DIST_M = 2000  # closing on the base and this close ...
+IMMINENT_ETA_MIN = 8.0  # ... or arriving this soon
+IMMINENT_HEADING_DEG = 45  # driving roughly at the base
+AT_BASE_M = 1000  # this close to the base is HIGH-eligible whatever it does
+
+
+def is_imminent(row: VehicleRow) -> bool:
+    """Whether a vehicle may be HIGH: at the base, or closing on it now, pointed at it, and
+    within IMMINENT_DIST_M or IMMINENT_ETA_MIN."""
+    if row.dist_to_base_m <= AT_BASE_M:
+        return True
+    closing = (
+        row.moving
+        and row.closing_last5_m_per_min > 0
+        and row.heading_vs_base_deg is not None
+        and row.heading_vs_base_deg <= IMMINENT_HEADING_DEG
+    )
+    soon = row.eta_to_base_min is not None and row.eta_to_base_min <= IMMINENT_ETA_MIN
+    return closing and (row.dist_to_base_m <= IMMINENT_DIST_M or soon)
+
+
+def gated_level(level: WatchLevel, row: VehicleRow) -> WatchLevel:
+    """`level`, capped at MEDIUM unless the vehicle is imminent."""
+    return "MEDIUM" if level == "HIGH" and not row.imminent else level
+
+
+def rubric_watch_level(row: VehicleRow) -> WatchLevel:
+    """The rubric's level on the watch scale (CRITICAL -> HIGH), gated by imminence."""
+    return gated_level(WATCH_LEVEL_OF[row.rubric.level], row)
+
+
 def watch_level_of(level: RiskLevel) -> WatchLevel:
     """Map the four rubric levels onto the three watch levels (CRITICAL -> HIGH)."""
     return WATCH_LEVEL_OF[level]
@@ -231,11 +264,13 @@ def vehicle_row(
         long_stops_within_6km=len(long_stops),
         behavior_class=behavior_class(track.points, base),
         rubric=track_rubric(motion, vehicle_type),
+        imminent=False,
         registry_level=registry_level,
         pending_level=pending_level,
         notes_count=notes_count,
         one_liner="",
     )
+    row = row.model_copy(update={"imminent": is_imminent(row)})
     return row.model_copy(update={"one_liner": one_liner(row, lang)})
 
 

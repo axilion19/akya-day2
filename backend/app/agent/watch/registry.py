@@ -93,6 +93,15 @@ class CarRegistry:
         e.pending = PendingLevel(level=level, since=tick, by=by)
         return LevelChange(track_id, e.level, level, by, pending=True, reason=reason)
 
+    def lower(self, track_id: str, level: WatchLevel, by: str, reason: str) -> LevelChange | None:
+        """De-escalation by a watcher (the caller checked it is allowed): applies immediately."""
+        e = self.get(track_id)
+        if level_index(level) >= level_index(e.level):
+            return None
+        old = e.level
+        e.level, e.pending = level, None
+        return LevelChange(track_id, old, level, by, pending=False, reason=reason)
+
     def set_level(
         self, track_id: str, level: WatchLevel, by: str, reason: str
     ) -> LevelChange | None:

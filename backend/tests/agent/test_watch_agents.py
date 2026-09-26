@@ -22,6 +22,11 @@ from tests.agent.fake_llm import FakeLLM, rubric_responder, submit
 TICK = 14 * 60 + 5
 
 
+def imminent(ctx: WatchContext, tid: str) -> None:
+    """Mark a vehicle as imminent (HIGH-eligible) for tests that need a HIGH."""
+    ctx.rows[tid] = ctx.rows[tid].model_copy(update={"imminent": True})
+
+
 def make_ctx(repo: Repository, settings: Settings) -> WatchContext:
     base, zones = repo.scene.base.position, repo.scene.zones
     rows = {}
@@ -126,7 +131,10 @@ async def test_watcher_levels_are_clamped_to_one_step_from_rubric(
     ctx = make_ctx(golden_repo, golden_settings)
     tid, row = next(iter(ctx.rows.items()))
     ctx.rows[tid] = row.model_copy(
-        update={"rubric": row.rubric.model_copy(update={"level": "HIGH", "score": 60})}
+        update={
+            "rubric": row.rubric.model_copy(update={"level": "HIGH", "score": 60}),
+            "imminent": True,
+        }
     )
     llm = FakeLLM([submit("submit_watch_report", good_report(ctx, "LOW"))])
     out = await run_watcher(llm, ctx, watcher_input(ctx))
@@ -175,6 +183,7 @@ async def test_supervisor_informs_operator_and_has_no_trackers_by_default(
     golden_repo: Repository, golden_settings: Settings
 ) -> None:
     ctx = make_ctx(golden_repo, golden_settings)
+    imminent(ctx, "T0122")
     llm = FakeLLM(
         [
             submit("dispatch_tracker", {"track_id": "T0122"}),
@@ -213,6 +222,7 @@ async def test_tracker_dispatch_requires_high_when_trackers_are_enabled(
     golden_repo: Repository, golden_settings: Settings
 ) -> None:
     ctx = make_ctx(golden_repo, golden_settings.model_copy(update={"trackers_enabled": True}))
+    imminent(ctx, "T0122")
     suspicion = {
         "hypothesis": "h",
         "evidence_ids": ["TRK-T0122"],
@@ -359,3 +369,37 @@ async def test_runner_emits_agent_traces_with_every_step(
         kinds = [s["step"] for s in tr.steps]
         assert kinds[0] == "llm" and "tool" in kinds and tr.output is not None
         assert "reasoning" in tr.steps[0]
+
+
+async def test_high_is_capped_at_medium_unless_imminent(
+    golden_repo: Repository, golden_settings: Settings
+) -> None:
+    ctx = make_ctx(golden_repo, golden_settings)
+    assert not ctx.rows["T0122"].imminent  # 4.1 km out, ETA 11.6 min at 14:05
+    llm = FakeLLM([submit("submit_watch_report", good_report(ctx, "HIGH"))])
+    out = await run_watcher(llm, ctx, watcher_input(ctx))
+    levels = {v.track_id: v.level for v in out.report.vehicles}
+    assert all(levels[tid] != "HIGH" for tid, r in ctx.rows.items() if not r.imminent)
+
+
+async def test_supervisor_cannot_set_high_on_a_vehicle_that_is_not_imminent(
+    golden_repo: Repository, golden_settings: Settings
+) -> None:
+    ctx = make_ctx(golden_repo, golden_settings)
+    set_high = {"track_id": "T0122", "level": "HIGH", "reason": "r", "evidence_ids": ["TRK-T0122"]}
+    llm = FakeLLM([submit("set_level", set_high), decision()])
+    out = await run_supervisor(llm, ctx, supervisor_input())
+    assert "is not imminent" in llm.requests[1][-1]["content"]
+    assert ctx.registry.get("T0122").level == "LOW" and not out.level_changes
+
+
+async def test_high_that_is_no_longer_imminent_may_drop_to_medium(
+    golden_repo: Repository, golden_settings: Settings
+) -> None:
+    ctx = make_ctx(golden_repo, golden_settings)
+    tid = "T0122"
+    ctx.rows[tid] = ctx.rows[tid].model_copy(update={"registry_level": "HIGH"})
+    report = good_report(ctx, "MEDIUM")
+    llm = FakeLLM([submit("submit_watch_report", report)])
+    out = await run_watcher(llm, ctx, watcher_input(ctx))
+    assert {v.track_id: v.level for v in out.report.vehicles}[tid] == "MEDIUM"

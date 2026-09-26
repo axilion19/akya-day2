@@ -1237,6 +1237,11 @@ export interface components {
             behavior_class: "steady_approach" | "loops_around_base" | "fixed_range_orbit" | "mixed_transit" | "leaving_base" | "parked" | "unknown";
             rubric: components["schemas"]["Rubric"];
             /**
+             * Imminent
+             * @default false
+             */
+            imminent: boolean;
+            /**
              * Registry Level
              * @enum {string}
              */

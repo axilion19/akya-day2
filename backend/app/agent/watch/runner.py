@@ -331,7 +331,12 @@ class WatchRunner:
     def _apply_watcher(self, tick: str, inp: WatcherInput, outcome: WatcherOutcome) -> None:
         by = f"watcher:{inp.watcher_id}"
         for v in outcome.report.vehicles:
-            change = self.registry.propose(v.track_id, v.level, tick, by, v.reason)
+            # enforce_rules only lets a verdict go below the registry for a HIGH that is no
+            # longer imminent, so a lower verdict here is an allowed de-escalation.
+            if level_index(v.level) < level_index(self.registry.get(v.track_id).level):
+                change = self.registry.lower(v.track_id, v.level, by, v.reason)
+            else:
+                change = self.registry.propose(v.track_id, v.level, tick, by, v.reason)
             if change:
                 self._emit_change(tick, change)
             if v.note:

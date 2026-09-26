@@ -24,9 +24,9 @@ from app.domain.watch import (
     WatcherReport,
     WatchLevel,
 )
-from app.services.watch import watch_level_of
+from app.services.watch import gated_level, rubric_watch_level
 
-PROMPT = "watcher_v3"
+PROMPT = "watcher_v4"
 MAX_TOKENS = 12000
 LANGUAGE_NAMES = {"tr": "Turkish", "en": "English"}
 
@@ -65,7 +65,7 @@ class WatcherOutcome:
 def needs_judgment(row: VehicleRow) -> bool:
     """Rows sent in full and required in the answer; the rest are one-liners treated as LOW."""
     return (
-        watch_level_of(row.rubric.level) != "LOW"
+        rubric_watch_level(row) != "LOW"
         or row.registry_level != "LOW"
         or row.pending_level is not None
         or row.notes_count > 0
@@ -166,16 +166,20 @@ def _checker(ctx: t.WatchContext, inp: WatcherInput) -> Any:
 
 
 def enforce_rules(report: WatcherReport, rows: list[VehicleRow]) -> tuple[WatcherReport, list[str]]:
-    """Clamp levels: never below the registry level, at most one step from the rubric."""
+    """Clamp levels: HIGH only for imminent vehicles; within one level of the (gated) rubric;
+    never below the registry level, except that a HIGH that is no longer imminent may drop to
+    MEDIUM (de-escalation)."""
     by_id = {r.track_id: r for r in rows}
     warnings: list[str] = []
     fixed: list[VehicleVerdict] = []
     for v in report.vehicles:
         row = by_id[v.track_id]
-        rubric = level_index(watch_level_of(row.rubric.level))
-        lo = max(level_index(row.registry_level), rubric - 1)
-        hi = max(rubric + 1, level_index(row.registry_level))
+        rubric = level_index(rubric_watch_level(row))
+        registry = level_index(gated_level(row.registry_level, row))
+        lo = max(registry, rubric - 1)
+        hi = max(rubric + 1, registry)
         idx = min(max(level_index(v.level), lo), hi)
+        idx = level_index(gated_level(WATCH_LEVELS[idx], row))
         if idx != level_index(v.level):
             warnings.append(f"{v.track_id}: level {v.level} clamped to {WATCH_LEVELS[idx]}")
             v = v.model_copy(update={"level": WATCH_LEVELS[idx]})
@@ -188,7 +192,7 @@ def fallback_report(inp: WatcherInput) -> WatcherReport:
     verdicts = []
     for row in judged_rows(inp):
         level: WatchLevel = max(
-            watch_level_of(row.rubric.level), row.registry_level, key=level_index
+            rubric_watch_level(row), gated_level(row.registry_level, row), key=level_index
         )
         top = [f.detail for f in row.rubric.factors if f.points > 0][:3]
         verdicts.append(
