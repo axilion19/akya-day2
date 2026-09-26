@@ -759,7 +759,7 @@ Call submit_report_claim exactly once.
 
 Watch mode streams over SSE, one JSON object per `data:` line. Every event has `type` and `tick`. The examples below are **real events from the 10:10–10:30 demo run** (`make watch-demo`, 4 watchers, YOLO on, trackers off, output language Turkish), taken from tick 10:25 and trimmed where marked with `…`. Complete logs for building and mocking the UI:
 
-- [`docs/examples/watch_run_1010-1030.jsonl`](examples/watch_run_1010-1030.jsonl): current event types (98 events, v7 prompts); readable transcript [`watch_run_1010-1030.md`](examples/watch_run_1010-1030.md).
+- [`docs/examples/watch_run_1010-1030.jsonl`](examples/watch_run_1010-1030.jsonl): current event types (96 events, v8 prompts); readable transcript [`watch_run_1010-1030.md`](examples/watch_run_1010-1030.md).
 - [`docs/examples/watch_run_1350-1415.jsonl`](examples/watch_run_1350-1415.jsonl): the earlier run (2 watchers, trackers on, old `authority_alert` events); transcript [`watch_run_1350-1415.md`](examples/watch_run_1350-1415.md).
 
 ```json
