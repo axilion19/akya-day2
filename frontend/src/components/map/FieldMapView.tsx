@@ -9,6 +9,7 @@ import { useFieldMapModel } from '@/hooks/useFieldMapModel'
 import { useMapViewport } from '@/hooks/useMapViewport'
 import { t } from '@/i18n'
 import { hhmm, unproject } from '@/lib/fieldMap'
+import { cn } from '@/lib/utils'
 import { BaseMarker } from './BaseMarker'
 import { FrameLayer } from './FrameLayer'
 import { MapGrid } from './MapGrid'
@@ -40,6 +41,10 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
   const [zone, setZone] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection>(null)
   const [cursor, setCursor] = useState<LatLon | null>(null)
+  const [zonesOpen, setZonesOpen] = useState(true)
+  const [feedOpen, setFeedOpen] = useState(true)
+  // Bottom controls stop at the report feed when it is open, else run to the edge.
+  const rightInset = feedOpen ? '21.5rem' : '0.75rem'
 
   const minute = clock.minute
   const inZone = (z: string | null) => zone === null || z === zone
@@ -139,6 +144,8 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
           activeZone={zone}
           counts={counts}
           onZone={selectZone}
+          open={zonesOpen}
+          onToggle={() => setZonesOpen((o) => !o)}
         />
         <div className="max-w-md">
           <MapLegend visible={visible} onToggle={(k) => setVisible((v) => ({ ...v, [k]: !v[k] }))} />
@@ -146,11 +153,11 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
       </div>
 
       <div className="absolute top-3 right-3 bottom-3 flex">
-        <ReportFeed reports={feed} minute={minute} selectedId={selectedReport?.report_id ?? null} onSelect={selectReport} />
+        <ReportFeed reports={feed} minute={minute} selectedId={selectedReport?.report_id ?? null} onSelect={selectReport} open={feedOpen} onToggle={() => setFeedOpen((o) => !o)} />
       </div>
 
       {selectedTrack && (
-        <div className="absolute top-3 right-[21.5rem]">
+        <div className={cn('absolute right-[21.5rem]', feedOpen ? 'top-3' : 'top-16')}>
           <TrackDetail
             track={selectedTrack}
             frame={selectedTrack.image_id ? model.imageById.get(selectedTrack.image_id) : undefined}
@@ -164,17 +171,19 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
       )}
 
       {cursor && (
-        <div className="pointer-events-none absolute right-[24rem] bottom-[5.5rem] rounded-md border bg-card/85 px-2.5 py-1 font-mono text-[11px] text-muted-foreground tabular-nums backdrop-blur">
+        <div style={{ right: `calc(${rightInset} + 2.5rem)` }}
+          className="pointer-events-none absolute bottom-[5.5rem] rounded-md border bg-card/85 px-2.5 py-1 font-mono text-[11px] text-muted-foreground tabular-nums backdrop-blur">
           {t.fieldMap.cursor.lat} <span className="text-foreground">{cursor.lat.toFixed(6)}</span> · {t.fieldMap.cursor.lon}{' '}
           <span className="text-foreground">{cursor.lon.toFixed(6)}</span>
         </div>
       )}
 
-      <Button size="icon-sm" variant="outline" className="absolute right-[21.5rem] bottom-[5.5rem] bg-card/85" onClick={fit} aria-label={t.fieldMap.fit} title={t.fieldMap.fit}>
+      <Button size="icon-sm" variant="outline" style={{ right: rightInset }}
+        className="absolute bottom-[5.5rem] bg-card/85" onClick={fit} aria-label={t.fieldMap.fit} title={t.fieldMap.fit}>
         <Maximize />
       </Button>
 
-      <div className="absolute right-[21.5rem] bottom-3 left-3">
+      <div className="absolute bottom-3 left-3" style={{ right: rightInset }}>
         <TimeBar
           start={clock.start}
           end={clock.end}

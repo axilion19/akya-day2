@@ -200,6 +200,8 @@ export const tr = {
       toggle: 'Haritada göster/gizle',
     },
     fit: 'Tüm sahayı göster',
+    collapse: 'Paneli daralt',
+    expand: 'Paneli genişlet',
     cursor: { lat: 'enlem', lon: 'boylam' },
     loadError: 'Harita verisi yüklenemedi. API çalışıyor mu?',
     track: {
