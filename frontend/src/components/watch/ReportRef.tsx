@@ -29,6 +29,7 @@ export function ReportRef({ report, judgment: j, texts, meta, className }: Props
   const [open, setOpen] = useState(false)
   const style = VERDICT[j.verdict]
   const conflicts = j.conflicts_with.map((id) => ({ id, text: texts?.get(id) }))
+  const extraTracks = j.track_ids.filter((id) => !j.reason.includes(id)) // the reason often names them
   return (
     <div className={cn('flex flex-col gap-1 rounded-md border px-2 py-1.5 text-xs', style.box, className)}>
       <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
@@ -53,10 +54,10 @@ export function ReportRef({ report, judgment: j, texts, meta, className }: Props
       </p>
       <p className="leading-relaxed">
         <LinkedIds text={j.reason} />
-        {j.track_ids.length > 0 && (
+        {extraTracks.length > 0 && (
           <span className="text-muted-foreground">
             {' · '}
-            <LinkedIds text={j.track_ids.join(' ')} />
+            <LinkedIds text={extraTracks.join(' ')} />
           </span>
         )}
       </p>
