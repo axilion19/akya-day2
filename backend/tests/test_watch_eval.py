@@ -43,4 +43,5 @@ def test_scores_recall_delay_and_unbacked_decisions() -> None:
         "Looping/orbiting vehicles within 5 km: 2/2 rated HIGH, median 2 min"
     )
     assert "1/2 named in an operator alert" in lines[0]
-    assert lines[1] == "Fast close approaches: 0/1 rated HIGH; 0/1 named in an operator alert."
+    assert "Fast close approaches: 0/1 rated HIGH; 0/1 named in an operator alert." in lines
+    assert "Probing vehicles (approach, pull back, return): none in this run." in lines

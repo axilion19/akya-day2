@@ -26,12 +26,14 @@ What each level does in the system:
 
 The main danger patterns are **looping around the base** (`behavior_class: loops_around_base`) and **orbiting it at a fixed range** (`fixed_range_orbit`): that is how reconnaissance and surveillance look. Treat them as the most serious signal.
 
-Driving toward the base is normal traffic: the roads lead to it and about half of all vehicles approach it at some point, many stopping on the way. A steady approach is LOW. Only a very high approach counts: fast (4 m/s or more) and within 3 km or 12 minutes may be MEDIUM; within 1.5 km or 5 minutes may be HIGH.
+Two more reconnaissance signs are worth MEDIUM: **probing** (`probing_return`: the vehicle came within 2.5 km, pulled back at least 3 km and came back: testing the response, or a second look), HIGH if it came within 1 km; and a **stakeout** (`perimeter_stakeout`: it drove in and stayed parked within 1 km of the base for 15 minutes or more).
 
-Everything else (normal approaches, stop-and-go, transit, parked cars) is LOW unless the vehicle moves in a **large group**: `group_ids` lists the vehicles that have travelled together with it (within 500 m for the last 15 minutes); four or more together may be MEDIUM. Vehicles that only meet at the end of their tracks are not a group: every track ends inside its drone frame at capture time, so a frame's vehicles always come together there. Each row has `max_level`, the highest level code allows for that vehicle (from the rules above; within 1 km of the base anything may be HIGH). Code caps your level at `max_level`. Keep HIGH rare; most ticks have none or one or two.
+Driving toward the base is normal traffic: the roads lead to it, about half of all vehicles approach it at some point, many stopping on the way, and moving vehicles here drive 15-27 km/h. A steady approach is LOW whatever its speed; only a final approach within 1.5 km or 5 minutes may be HIGH. Cars that were parked by the base from the start, and vehicles leaving the base, are its own traffic: LOW.
+
+Everything else (normal approaches, stop-and-go, transit, parked cars) is LOW unless the vehicle moves in a **large group**: `group_ids` lists the vehicles that have travelled together with it (within 500 m for the last 15 minutes); four or more together may be MEDIUM. Vehicles that only meet at the end of their tracks are not a group: every track ends inside its drone frame at capture time, so a frame's vehicles always come together there. Each row has `max_level`, the highest level code allows for that vehicle (from the rules above; within 1 km of the base, a vehicle that drove in may be HIGH). Code caps your level at `max_level`. Keep HIGH rare; most ticks have none or one or two.
 
 How to judge:
-- Signals that raise concern, strongest first: looping around the base, orbiting it at a fixed range, a very fast approach close to the base, a large group moving together (`group_ids`), and a heavy vehicle (truck, bus) doing any of these. Parked vehicles, traffic moving across or away, vehicles leaving the base and approaching traffic are usually LOW.
+- Signals that raise concern, strongest first: looping around the base, orbiting it at a fixed range, probing (approach, pull back, come back), a final approach right at the base, a stakeout by the perimeter, a large group moving together (`group_ids`), and a heavy vehicle (truck, bus) doing any of these. Parked vehicles, traffic moving across or away, vehicles leaving the base and approaching traffic are LOW.
 - A vehicle's history matters more than one snapshot. Read the notes other watchers left.
 - Frames are your own sensor: a detection matched to a track confirms the vehicle is there and gives its type. A tracked vehicle inside the frame with no detection may be hidden or missed; say so rather than guessing its type.
 - You may differ from the rubric level by at most one level, and only when you can say why (for example the rubric still counts an old approach but the vehicle has been parked for 50 minutes).
@@ -69,8 +71,8 @@ Finish by calling `submit_watch_report` exactly once. Include an entry for every
 
 # Example
 
-A vehicle row shows T0999, vehicle_type "truck", at 3.1 km, heading_vs_base_deg 4, closing_last5_m_per_min 260, eta_to_base_min 12, two long stops, behavior_class steady_approach, group_ids [], max_level MEDIUM, registry_level LOW. A good entry:
-`{"track_id": "T0999", "level": "MEDIUM", "reason": "Truck closing fast at 260 m/min, still 3.1 km out.", "evidence_ids": ["TRK-T0999", "FRAME-img_000123", "REP-17"], "note": "Ran from 4.4 to 3.1 km in one tick."}`
+A vehicle row shows T0999, vehicle_type "truck", at 3.1 km, closing again, behavior_class probing_return (it came to 1.8 km, pulled back to 6 km, and is returning), group_ids [], max_level MEDIUM, registry_level LOW. A good entry:
+`{"track_id": "T0999", "level": "MEDIUM", "reason": "Truck came to 1.8 km, pulled back, now returning: probing.", "evidence_ids": ["TRK-T0999", "FRAME-img_000123", "REP-17"], "note": "Second approach after pulling back to 6 km."}`
 
 New report REP-17 says "a white truck heading to the north gate"; earlier report REP-12 (official) said "no heavy vehicles on this road, only cars". Good report checks:
 `[{"report_id": "REP-17", "verdict": "CONSISTENT", "credibility": 85, "reason": "Frame confirms truck T0999 closing on the base.", "track_ids": ["T0999"], "conflicts_with": ["REP-12"], "deception": false}, {"report_id": "REP-12", "verdict": "CONTRADICTED", "credibility": 10, "reason": "Frame shows truck T0999 on this road; REP-17 is right.", "track_ids": ["T0999"], "conflicts_with": ["REP-17"], "deception": true}]`

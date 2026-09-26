@@ -29,6 +29,7 @@ from app.services.behavior import DANGER_PATTERNS
 from app.services.risk import AT_BASE_M, PATTERN_HIGH_M, level_ceiling
 
 Event = dict[str, Any]
+RANK = {"pattern": 0, "probe": 1, "stakeout": 2, "approach": 3}
 
 
 @dataclass
@@ -48,6 +49,7 @@ class Result:
     ticks: list[int]
     truth: dict[str, Truth]
     high_at: dict[str, int]  # first minute a vehicle got HIGH (pending or confirmed)
+    flag_at: dict[str, int]  # first minute it got MEDIUM or HIGH
     alert_at: dict[str, int]  # first operator alert naming it
     unbacked_high: list[tuple[str, str, str]]  # (track, tick, why code did not back it)
     unbacked_alerts: list[tuple[str, str]]  # (tick, headline)
@@ -66,7 +68,6 @@ def fast_close_approach(row: VehicleRow) -> bool:
     closing_now = row.moving and row.closing_last5_m_per_min > 0
     rule_only = level_ceiling(
         max(row.dist_to_base_m, AT_BASE_M + 1),  # skip the proximity rule, keep the approach one
-        row.speed_last10_ms,
         closing_now,
         row.heading_vs_base_deg,
         row.eta_to_base_min,
@@ -100,6 +101,16 @@ def ground_truth(repo: Repository, settings: Settings, ticks: list[int]) -> dict
             dist = row.dist_to_base_m
             if row.behavior_class in DANGER_PATTERNS and dist <= PATTERN_HIGH_M:
                 kind, detail = "pattern", f"{row.behavior_class} at {dist / 1000:.1f} km"
+            elif row.behavior_class == "probing_return":
+                kind, detail = (
+                    "probe",
+                    f"probing (approach, pull back, return), now {dist / 1000:.1f} km",
+                )
+            elif row.behavior_class == "perimeter_stakeout":
+                kind, detail = (
+                    "stakeout",
+                    f"parked by the perimeter after driving in, now {dist / 1000:.1f} km",
+                )
             elif fast_close_approach(row):
                 eta = f", ETA {row.eta_to_base_min:.0f} min" if row.eta_to_base_min else ""
                 kind, detail = "approach", f"fast approach at {dist / 1000:.1f} km{eta}"
@@ -107,7 +118,7 @@ def ground_truth(repo: Repository, settings: Settings, ticks: list[int]) -> dict
                 continue
             t = truth.setdefault(tid, Truth(kind, minute, detail))
             t.minutes.add(minute)
-            if kind == "pattern" and t.kind != "pattern":  # a pattern outranks an approach
+            if RANK[kind] < RANK[t.kind]:  # the strongest sign names the vehicle
                 t.kind, t.detail = kind, detail
     return truth
 
@@ -128,6 +139,7 @@ def evaluate(events: list[Event], truth: dict[str, Truth]) -> Result:
     # The operator cleared these: not must-catch, whatever the code rules say.
     truth = {tid: t for tid, t in truth.items() if tid not in announced}
     high_at: dict[str, int] = {}
+    flag_at: dict[str, int] = {}  # first MEDIUM or HIGH
     alert_at: dict[str, int] = {}
     unbacked_high: list[tuple[str, str, str]] = []
     unbacked_alerts: list[tuple[str, str]] = []
@@ -137,6 +149,8 @@ def evaluate(events: list[Event], truth: dict[str, Truth]) -> Result:
     for e in events:
         kind = e["type"]
         minute = to_minutes(e["tick"]) if "tick" in e else 0
+        if kind == "level_changed" and e["to_level"] != "LOW":
+            flag_at.setdefault(e["track_id"], minute)
         if kind == "level_changed" and e["to_level"] == "HIGH" and e["track_id"] not in high_at:
             tid = e["track_id"]
             high_at[tid] = minute
@@ -170,7 +184,7 @@ def evaluate(events: list[Event], truth: dict[str, Truth]) -> Result:
         top = max(levels, key=order.__getitem__, default="LOW")
         cleared[tid] = (exp_id, top, tid in alert_at)
     return Result(
-        ticks, truth, high_at, alert_at, unbacked_high, unbacked_alerts, alerts, verdicts,
+        ticks, truth, high_at, flag_at, alert_at, unbacked_high, unbacked_alerts, alerts, verdicts,
         deception, turns, repairs, clamps, cleared,
     )  # fmt: skip
 
@@ -179,23 +193,36 @@ def _latency(first: int, at: int | None) -> str:
     return "–" if at is None else f"{max(0, at - first)} min"
 
 
+def _rated(r: Result, kind: str) -> tuple[dict[str, int], str]:
+    """When each vehicle reached its expected level: HIGH for patterns and close approaches,
+    MEDIUM or higher for probes and stakeouts (MEDIUM is their allowed level)."""
+    return (
+        (r.high_at, "rated HIGH")
+        if kind in ("pattern", "approach")
+        else (r.flag_at, "rated MEDIUM or higher")
+    )
+
+
 def headline(r: Result) -> list[str]:
     """The numbers for a slide."""
     lines = []
     for kind, label in (
         ("pattern", "Looping/orbiting vehicles within 5 km"),
+        ("probe", "Probing vehicles (approach, pull back, return)"),
+        ("stakeout", "Stakeouts by the perimeter"),
         ("approach", "Fast close approaches"),
     ):
         ids = [t for t, v in r.truth.items() if v.kind == kind]
         if not ids:
             lines.append(f"{label}: none in this run.")
             continue
-        high = [t for t in ids if t in r.high_at]
+        rated_at, word = _rated(r, kind)
+        rated = [t for t in ids if t in rated_at]
         alerted = [t for t in ids if t in r.alert_at]
-        lat = [max(0, r.high_at[t] - r.truth[t].first_min) for t in high]
+        lat = [max(0, rated_at[t] - r.truth[t].first_min) for t in rated]
         med = f", median {median(lat):.0f} min after code could see it" if lat else ""
         lines.append(
-            f"{label}: {len(high)}/{len(ids)} rated HIGH{med}; {len(alerted)}/{len(ids)} named in "
+            f"{label}: {len(rated)}/{len(ids)} {word}{med}; {len(alerted)}/{len(ids)} named in "
             "an operator alert."
         )
     for tid, (exp_id, top, alerted) in r.cleared.items():
@@ -205,6 +232,11 @@ def headline(r: Result) -> list[str]:
             if not alerted
             else f"Operator-announced vehicle {tid} ({exp_id}): {state}, alerted"
         )
+    noise = [t for t in r.flag_at if t not in r.truth and t not in r.cleared]
+    lines.append(
+        f"False alarms: {len(noise)} of {len(r.flag_at)} vehicles rated MEDIUM or higher had no "
+        "reconnaissance sign, danger pattern or close approach."
+    )
     lines.append(
         f"HIGH ratings not backed by a code rule: {len(r.unbacked_high)} of {len(r.high_at)}; "
         f"operator alerts not backed: {len(r.unbacked_alerts)} of {r.alerts}."
@@ -232,12 +264,10 @@ def markdown(r: Result, name: str) -> str:
     out = [f"# Watch run evaluation: {name} ({span}, {len(r.ticks)} ticks)", "", "## Headline", ""]
     out += [f"- {line}" for line in headline(r)]
     out += ["", "## Must-catch vehicles (code ground truth)", "",
-            "| Vehicle | Why (code) | Visible from | Rated HIGH | Delay | In an alert | Delay |",
+            "| Vehicle | Why (code) | Visible from | Rated as expected | Delay | Alert | Delay |",
             "|---|---|---|---|---|---|---|"]  # fmt: skip
-    for tid, t in sorted(
-        r.truth.items(), key=lambda kv: (kv[1].kind != "pattern", kv[1].first_min)
-    ):
-        high, alert = r.high_at.get(tid), r.alert_at.get(tid)
+    for tid, t in sorted(r.truth.items(), key=lambda kv: (RANK[kv[1].kind], kv[1].first_min)):
+        high, alert = _rated(r, t.kind)[0].get(tid), r.alert_at.get(tid)
         out.append(
             f"| {tid} | {t.detail} | {to_hhmm(t.first_min)} | "
             f"{to_hhmm(high) if high is not None else 'no'} | {_latency(t.first_min, high)} | "
@@ -254,8 +284,12 @@ def markdown(r: Result, name: str) -> str:
         "",
         "Ground truth is recomputed from the raw tracks at every tick with the same deterministic "
         "code the system uses (`behavior_class`, `level_ceiling`), not from anything the agents "
-        "wrote. A vehicle is must-catch while it loops around or orbits the base within 5 km, or "
-        "approaches fast enough that the ceiling's approach rule allows HIGH. 'Rated HIGH' is the "
+        "wrote. A vehicle is must-catch while it loops around or orbits the base within 5 km, "
+        "probes it (approach, pull back, come back), staked it out (drove in, parked within "
+        "1 km), "
+        "or approaches fast enough that the ceiling's approach rule allows HIGH. For probes and "
+        "stakeouts, 'rated HIGH' means rated MEDIUM or higher (their allowed level). "
+        "'Rated HIGH' is the "
         "first HIGH an agent gave (a watcher's raise still waiting for its confirming check "
         "counts: it is on the map). Delay = first HIGH (or alert) minus the first tick the rule "
         "held; watchers take turns over sectors, so a vehicle can wait a tick before its sector is "

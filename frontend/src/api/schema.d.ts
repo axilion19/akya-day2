@@ -1384,7 +1384,7 @@ export interface components {
              * Behavior Class
              * @enum {string}
              */
-            behavior_class: "steady_approach" | "loops_around_base" | "fixed_range_orbit" | "mixed_transit" | "leaving_base" | "parked" | "unknown";
+            behavior_class: "steady_approach" | "loops_around_base" | "fixed_range_orbit" | "probing_return" | "perimeter_stakeout" | "mixed_transit" | "leaving_base" | "parked" | "unknown";
             rubric: components["schemas"]["Rubric"];
             /**
              * Max Level

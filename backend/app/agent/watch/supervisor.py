@@ -33,7 +33,7 @@ from app.domain.watch import (
     WatchLevel,
 )
 
-PROMPT = "supervisor_v10"
+PROMPT = "supervisor_v11"
 MAX_TOKENS = 16000
 NO_TRACKERS = (
     "3. No trackers or field units are available in this exercise: you cannot send anyone. "
@@ -100,8 +100,10 @@ class _Effects:
         if row is not None and WATCH_LEVELS.index(level) > WATCH_LEVELS.index(row.max_level):
             raise BoardError(
                 f"{tid} may be at most {row.max_level}: HIGH is for vehicles looping around or "
-                "orbiting the base, within 1 km of it, or approaching very fast and close "
-                "(1.5 km or 5 min); a normal approach is LOW"
+                "orbiting the base, probing it from within 1 km, or driving right up to it (a "
+                "final approach within 1.5 km or 5 min, or within 1 km after driving in); MEDIUM "
+                "for probing, a stakeout or a large group moving together; normal-speed "
+                "approaches and the base's own traffic are LOW"
             )
         reason = str(args.get("reason") or "").strip()
         if not reason:
@@ -125,6 +127,14 @@ class _Effects:
         announced = [i for i in track_ids if (r := self.ctx.rows.get(i)) and r.expected]
         if announced and len(announced) == len(track_ids):
             raise BoardError(f"{announced} were announced by the operator; do not alert about them")
+        rows = [self.ctx.rows[i] for i in track_ids if i in self.ctx.rows]
+        if rows and all(r.max_level == "LOW" for r in rows):
+            raise BoardError(
+                "no code rule backs an alert about these vehicles (all may be at most LOW: "
+                "normal-speed approaches, the base's own traffic, or vehicles that only meet "
+                "inside a drone frame); alert only about circling, probing, a stakeout, a very "
+                "close approach or a large group moving together"
+            )
         headline = str(args.get("headline") or "").strip()
         description = str(args.get("description") or "").strip()
         if not headline or not description:

@@ -110,17 +110,21 @@ def track_rubric(
     return Rubric(score=score, level=level_for(score), factors=factors)
 
 
-def row_ceiling(row: VehicleRow) -> WatchLevel:
-    """Highest level this vehicle may get (`services.risk.level_ceiling` on the row's facts)."""
+def row_ceiling(
+    row: VehicleRow, start_m: float | None = None, closest_m: float | None = None
+) -> WatchLevel:
+    """Highest level this vehicle may get (`services.risk.level_ceiling` on the row's facts;
+    `start_m` / `closest_m`: distance when first seen / closest approach so far, m)."""
     closing_now = row.moving and row.closing_last5_m_per_min > 0
     return level_ceiling(
         row.dist_to_base_m,
-        row.speed_last10_ms,
         closing_now,
         row.heading_vs_base_deg,
         row.eta_to_base_min,
         row.behavior_class,
         len(row.group_ids) + 1,
+        start_m=start_m,
+        closest_m=closest_m,
     )
 
 
@@ -253,7 +257,9 @@ def vehicle_row(
         notes_count=notes_count,
         one_liner="",
     )
-    row = row.model_copy(update={"max_level": row_ceiling(row)})
+    dists = [haversine_m(p.position, base) for p in track.points]
+    ceiling = row_ceiling(row, start_m=dists[0], closest_m=min(dists))
+    row = row.model_copy(update={"max_level": ceiling})
     return row.model_copy(update={"one_liner": one_liner(row, lang)})
 
 

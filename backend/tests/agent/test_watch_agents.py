@@ -375,8 +375,8 @@ async def test_levels_never_exceed_the_vehicle_ceiling(
     golden_repo: Repository, golden_settings: Settings
 ) -> None:
     ctx = make_ctx(golden_repo, golden_settings)
-    # 3.5 km out, closing at 6 m/s, ETA 8.4 min: a fast approach, capped at MEDIUM
-    assert ctx.rows["T0122"].max_level == "MEDIUM"
+    # 3.5 km out, closing at 6 m/s, ETA 8.4 min: normal driving toward the base, capped at LOW
+    assert ctx.rows["T0122"].max_level == "LOW"
     llm = FakeLLM([submit("submit_watch_report", good_report(ctx, "HIGH"))])
     out = await run_watcher(llm, ctx, watcher_input(ctx))
     order = ["LOW", "MEDIUM", "HIGH"]
@@ -391,7 +391,7 @@ async def test_supervisor_cannot_set_a_level_above_the_ceiling(
     set_high = {"track_id": "T0122", "level": "HIGH", "reason": "r", "evidence_ids": ["TRK-T0122"]}
     llm = FakeLLM([submit("set_level", set_high), decision()])
     out = await run_supervisor(llm, ctx, supervisor_input())
-    assert "may be at most MEDIUM" in llm.requests[1][-1]["content"]
+    assert "may be at most LOW" in llm.requests[1][-1]["content"]
     assert ctx.registry.get("T0122").level == "LOW" and not out.level_changes
 
 

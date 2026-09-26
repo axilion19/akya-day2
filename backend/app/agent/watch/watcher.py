@@ -28,7 +28,7 @@ from app.domain.watch import (
 )
 from app.services.watch import gated_level, rubric_watch_level
 
-PROMPT = "watcher_v10"
+PROMPT = "watcher_v11"
 MAX_TOKENS = 12000
 LANGUAGE_NAMES = {"tr": "Turkish", "en": "English"}
 

@@ -19,6 +19,8 @@ BehaviorClass = Literal[
     "steady_approach",
     "loops_around_base",
     "fixed_range_orbit",
+    "probing_return",
+    "perimeter_stakeout",
     "mixed_transit",
     "leaving_base",
     "parked",

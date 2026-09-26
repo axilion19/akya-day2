@@ -149,16 +149,41 @@ def _row(points: list[tuple[float, float]]) -> "VehicleRow":
     )
 
 
-def test_ceiling_favours_patterns_over_approach() -> None:
+def test_ceiling_favours_recon_signs_over_normal_driving() -> None:
     fast_close = _row([(1400 + 1800 * (9 - i), 0) for i in range(10)])  # 6 m/s, 1.4 km out
-    assert fast_close.max_level == "HIGH"
-    fast_mid = _row([(2800 + 1500 * (9 - i), 0) for i in range(10)])  # 5 m/s, 2.8 km out
-    assert fast_mid.max_level == "MEDIUM"
+    assert fast_close.max_level == "HIGH"  # a final approach right at the base
+    normal = _row([(2800 + 1500 * (9 - i), 0) for i in range(10)])  # 5 m/s, 2.8 km out
+    assert normal.max_level == "LOW"  # normal driving speed toward the base is traffic
     slow = _row([(6000 - 60 * i, 0) for i in range(10)])  # slow approach, 5.5 km out
     assert slow.max_level == "LOW" and w.gated_level("HIGH", slow) == "LOW"
     loop = _row([(900 * math.cos(a / 3), 900 * math.sin(a / 3)) for a in range(20)])
     assert loop.behavior_class == "loops_around_base" and loop.max_level == "HIGH"
     assert any(f.name == "pattern" and f.points > 0 for f in loop.rubric.factors)
+
+
+def test_probing_and_stakeout_are_reconnaissance_signs() -> None:
+    def east(*km: float) -> list[tuple[float, float]]:
+        return [(1000 * k, 0) for k in km]
+
+    # in to 2 km, out to 6 km, back to 3.5 km: probing, MEDIUM
+    probe = _row(east(7, 5, 3, 2, 2, 4, 6, 6, 4.5, 3.5))
+    assert probe.behavior_class == "probing_return" and probe.max_level == "MEDIUM"
+    # the same after coming within 1 km: HIGH
+    near_probe = _row(east(6, 3, 0.9, 0.9, 3, 5, 5, 4, 2.8))
+    assert near_probe.behavior_class == "probing_return" and near_probe.max_level == "HIGH"
+    # wandering back and forth 3-5 km out is common and not probing
+    wander = _row(east(5, 4, 3.2, 4.5, 5.5, 4.2, 3.4))
+    assert wander.behavior_class != "probing_return"
+    # drove in from 5 km, parked 800 m out for 20 minutes, now 2.5 km out: stakeout, MEDIUM
+    stake = _row(east(5, 3, 0.8, 0.8, 0.8, 0.8, 0.8, 1.5, 2.5))
+    assert stake.behavior_class == "perimeter_stakeout" and stake.max_level == "MEDIUM"
+
+
+def test_the_bases_own_traffic_is_low() -> None:
+    parked = _row([(600, 0)] * 8)  # parked 600 m out from the start
+    assert parked.behavior_class == "parked" and parked.max_level == "LOW"
+    leaving = _row([(600, 0)] * 6 + [(1200, 0), (2000, 0), (3000, 0)])
+    assert leaving.behavior_class == "leaving_base" and leaving.max_level == "LOW"
 
 
 def test_moving_groups_need_to_travel_together_not_just_meet() -> None:
@@ -183,7 +208,7 @@ def test_moving_groups_need_to_travel_together_not_just_meet() -> None:
 def test_other_vehicles_are_medium_only_in_a_large_group() -> None:
     from app.services.risk import level_ceiling
 
-    args = (2700.0, 5.0, False, None, None, "mixed_transit")
+    args = (2700.0, False, None, None, "mixed_transit")
     assert level_ceiling(*args) == "LOW"
     assert level_ceiling(*args, group_size=3) == "LOW"
     assert level_ceiling(*args, group_size=4) == "MEDIUM"
