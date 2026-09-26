@@ -4,9 +4,8 @@ import { RiskBadge } from '@/components/analysis/RiskBadge'
 import { t } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { FieldReport } from '@/api/types'
-import { type ChatEntry, type JudgedReport, judgeLabel } from '@/lib/watchDemo'
+import { type JudgedReport, judgeLabel } from '@/lib/watchDemo'
 import { AgentText, LinkedIds } from './AgentText'
-import { OperatorChat } from './OperatorChat'
 import { ReportRef } from './ReportRef'
 
 type Alert = WatchEventOf<'operator_alert'>['alert']
@@ -21,7 +20,6 @@ interface Props {
   history: Alert[] // earlier alerts, newest first
   contradicted: JudgedReport[] // this tick's contradicted reports (watchers and supervisor)
   texts: Map<string, FieldReport>
-  chat: { entry: ChatEntry; reply: number }[] // operator conversation so far (scenario runs)
   progress: number // supervisor text, 0..1
   alertProgress: number // operator alert, 0..1
 }
@@ -39,7 +37,7 @@ const URGENCY_TEXT: Record<string, string> = {
 
 /** Operator view: current threat, one-line situation, the alert to act on, and the alert log.
  *  Internal detail (patterns, level changes, traces) is left out on purpose. */
-export function SupervisorCard({ tick, decision, alerts, history, contradicted, texts, chat, progress, alertProgress }: Props) {
+export function SupervisorCard({ tick, decision, alerts, history, contradicted, texts, progress, alertProgress }: Props) {
   const w = t.watch
   const d = decision?.decision
   return (
@@ -59,8 +57,6 @@ export function SupervisorCard({ tick, decision, alerts, history, contradicted, 
       {progress >= 1 && alertProgress >= 1 && alerts.length === 0 && (
         <p className="rounded-lg border border-dashed bg-card p-3 text-xs text-muted-foreground">{w.noAlerts}</p>
       )}
-
-      {chat.length > 0 && <OperatorChat items={chat} />}
 
       {progress > 0 && contradicted.length > 0 && (
         <section className="flex flex-col gap-1.5">

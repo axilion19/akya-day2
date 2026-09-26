@@ -10,6 +10,7 @@ import { TickBar } from '@/components/watch/TickBar'
 import { VehiclePanel } from '@/components/watch/VehiclePanel'
 import { WatcherCard } from '@/components/watch/WatcherCard'
 import { NoRecording } from '@/components/watch/NoRecording'
+import { OperatorChat } from '@/components/watch/OperatorChat'
 import { WatchMap } from '@/components/watch/WatchMap'
 import { useFieldMapData } from '@/hooks/useFieldMap'
 import { useMasterClock } from '@/hooks/useMasterClock'
@@ -36,7 +37,7 @@ import {
 
 /** Demo mode: replays recorded multi-agent watch runs on the master clock (no LLM calls); the
  *  recording that covers the clock's minute is shown (the longest if several do).
- *  Deep links: /watch?at=<HH:MM>&vehicle=<track_id>&tab=watchers|reports. */
+ *  Deep links: /watch?at=<HH:MM>&vehicle=<track_id>&tab=watchers|reports|chat. */
 export function WatchPage() {
   const [params] = useSearchParams()
   const clock = useMasterClock()
@@ -57,7 +58,7 @@ export function WatchPage() {
       model={demo.model}
       field={fieldData}
       initialVehicle={params.get('vehicle')}
-      initialTab={params.get('tab') === 'watchers' || params.get('tab') === 'reports' ? (params.get('tab') as 'watchers' | 'reports') : 'supervisor'}
+      initialTab={(['watchers', 'reports', 'chat'] as const).find((tab) => tab === params.get('tab')) ?? 'supervisor'}
     />
   )
 }
@@ -68,7 +69,7 @@ interface PlayerProps {
   model: DemoModel
   field: FieldData
   initialVehicle: string | null
-  initialTab: 'supervisor' | 'watchers' | 'reports'
+  initialTab: 'supervisor' | 'watchers' | 'reports' | 'chat'
 }
 
 function WatchPlayer({ model, field, initialVehicle, initialTab }: PlayerProps) {
@@ -101,6 +102,8 @@ function WatchPlayer({ model, field, initialVehicle, initialTab }: PlayerProps) 
     .reverse()
   const alertLive = tick.alerts.length > 0 && head.elapsed >= SCHEDULE.alert.start && !alertDone
   const announced = expectedAt(model, clock.minute)
+  const chat = chatAt(model, clock.minute)
+  const chatLive = chat.some((c) => c.reply < 1)
   const judged = reportJudgments(model, head, done, complete)
   const texts = reportTexts(model, head.index)
   const contradicted = latestPerReport(shown ? tickJudgments(shown) : []).filter((j) => j.judgment.verdict === 'CONTRADICTED' || j.judgment.deception)
@@ -154,6 +157,12 @@ function WatchPlayer({ model, field, initialVehicle, initialTab }: PlayerProps) 
                   {watchersLive && <span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden />}
                 </TabsTrigger>
                 <TabsTrigger value="reports">{w.tabReports(judged.length)}</TabsTrigger>
+                {model.chat.length > 0 && (
+                  <TabsTrigger value="chat" className="gap-2">
+                    {w.chat.tab}
+                    {chatLive && <span className="size-2 animate-pulse rounded-full bg-sky-600" aria-hidden />}
+                  </TabsTrigger>
+                )}
               </TabsList>
               <TabsContent value="supervisor" className="min-h-0 overflow-y-auto pr-1">
                 {head.elapsed === 0 && head.index === 0 ? (
@@ -167,7 +176,6 @@ function WatchPlayer({ model, field, initialVehicle, initialTab }: PlayerProps) 
                     history={history}
                     contradicted={contradicted}
                     texts={texts}
-                    chat={chatAt(model, clock.minute)}
                     progress={head.elapsed >= SCHEDULE.supervisor.start ? supProgress : previous ? 1 : 0}
                     alertProgress={holding ? (previous ? 1 : 0) : progress(head.elapsed, SCHEDULE.alert)}
                   />
@@ -189,6 +197,9 @@ function WatchPlayer({ model, field, initialVehicle, initialTab }: PlayerProps) 
                   ) : null,
                 )}
                 <p className="text-[11px] text-muted-foreground">{w.hint}</p>
+              </TabsContent>
+              <TabsContent value="chat" className="min-h-0 overflow-y-auto pr-1">
+                <OperatorChat items={chat} />
               </TabsContent>
               <TabsContent value="reports" className="min-h-0 overflow-y-auto pr-1">
                 <ReportsTab judged={judged} texts={texts} />

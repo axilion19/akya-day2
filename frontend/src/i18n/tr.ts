@@ -391,6 +391,8 @@ export const tr = {
     tabReports: (n: number) => `Raporlar (${n})`,
     chat: {
       title: 'Baş Denetçi ile konuşma',
+      tab: 'Konuşma',
+      empty: 'Operatör henüz Baş Denetçiye yazmadı.',
       operator: (time: string) => `Operatör · ${time}`,
       supervisor: 'Baş Denetçi',
       thinking: 'Baş Denetçi yanıtlıyor…',

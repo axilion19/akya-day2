@@ -17,6 +17,7 @@ export function OperatorChat({ items }: Props) {
   return (
     <section className="flex flex-col gap-2 rounded-lg border bg-card p-3 shadow-xs">
       <h3 className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">{c.title}</h3>
+      {items.length === 0 && <p className="text-sm text-muted-foreground">{c.empty}</p>}
       {items.map(({ entry, reply }) => (
         <div key={entry.time} className="flex flex-col gap-1.5">
           <div className="ml-8 self-end rounded-lg rounded-br-sm bg-primary/10 px-3 py-2 text-sm animate-in fade-in slide-in-from-bottom-1 duration-200">
