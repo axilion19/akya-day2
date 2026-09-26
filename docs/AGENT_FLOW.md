@@ -235,6 +235,7 @@ Without tracks this hand-off could not happen: **no vehicle appears in more than
 3. Supervisor messages, board and escalation to the mock authorities outbox.
 4. Scoring fixes (add points for looping around the base; stop rating parked vehicles ~1.6 km out as MEDIUM) and an evaluation slide: are the 5 base-looping vehicles and the HIGH vehicles flagged, how early, how many false alarms, and do misleading reports ever lower a level.
 5. Later: mock track extension + trackers; camera re-sighting (both in `PLAN.md` §10).
+6. Later: the operator dispatches extra watchers by talking to the supervisor, which calls `dispatch_watcher(target, reason, until?)` (target = sector, `track_id` or area) and `recall_watcher(watcher_id, reason)` (`PLAN.md` §10).
 
 ---
 ---
@@ -476,3 +477,4 @@ Gerçek veri. Bu aynı zamanda organizatörlerin altın örneğidir (`img_000860
 3. Baş denetçi mesajları, tablosu ve mock yetkililer kutusuna eskalasyon.
 4. Puanlama düzeltmeleri (üssün etrafında dolaşmaya puan ekle; ~1,6 km'de park etmiş araçları MEDIUM saymayı bırak) ve bir değerlendirme slaytı: üssün etrafında dolaşan 5 araç ve HIGH araçlar işaretleniyor mu, ne kadar erken, kaç yanlış alarm var ve yanıltıcı raporlar seviyeyi hiç düşürüyor mu.
 5. Sonra: mock iz uzantısı + takipçiler; kamerada yeniden bulma (ikisi de `PLAN.md` §10'da).
+6. Sonra: operatör baş denetçiyle konuşarak ek gözcü görevlendirir; baş denetçi `dispatch_watcher(target, reason, until?)` (target = sektör, `track_id` veya alan) ve `recall_watcher(watcher_id, reason)` araçlarını çağırır (`PLAN.md` §10).
