@@ -9,18 +9,17 @@ import { SupervisorCard } from '@/components/watch/SupervisorCard'
 import { TickBar } from '@/components/watch/TickBar'
 import { VehiclePanel } from '@/components/watch/VehiclePanel'
 import { WatcherCard } from '@/components/watch/WatcherCard'
+import { NoRecording } from '@/components/watch/NoRecording'
 import { WatchMap } from '@/components/watch/WatchMap'
-import { useClock } from '@/hooks/useClock'
 import { useFieldMapData } from '@/hooks/useFieldMap'
+import { useMasterClock } from '@/hooks/useMasterClock'
 import { VehicleLinkContext } from '@/hooks/useVehicleLink'
 import { useWatchDemo } from '@/hooks/useWatchDemo'
 import { t } from '@/i18n'
-import { hhmm } from '@/lib/fieldMap'
 import {
   type DemoModel,
   alertFocus,
   SCHEDULE,
-  TICK_MIN,
   finishedAgents,
   latestPerReport,
   levelsAt,
@@ -29,62 +28,50 @@ import {
   tickJudgments,
   playheadAt,
   progress,
-  toMinute,
   vehicleTypes,
   verdictHistory,
 } from '@/lib/watchDemo'
 
-/** Demo mode: replays a recorded multi-agent watch run on the field-map clock (no LLM calls).
- *  Deep links: /watch?recording=<id>&tick=<1-based>&at=<HH:MM>&vehicle=<track_id>&tab=watchers|reports. */
+/** Demo mode: replays recorded multi-agent watch runs on the master clock (no LLM calls); the
+ *  recording that covers the clock's minute is shown (the longest if several do).
+ *  Deep links: /watch?at=<HH:MM>&vehicle=<track_id>&tab=watchers|reports. */
 export function WatchPage() {
   const [params] = useSearchParams()
-  const [recordingId, setRecordingId] = useState<string | null>(params.get('recording'))
-  const demo = useWatchDemo(recordingId)
+  const clock = useMasterClock()
+  const demo = useWatchDemo(clock.minute)
   const field = useFieldMapData()
   const w = t.watch
 
   if (demo.isError || field.isError) return <Centered>{w.loadError}</Centered>
   if (demo.isEmpty) return <Centered>{w.empty}</Centered>
-  if (demo.isPending || field.isPending || !demo.model?.ticks.length || !field.scene || !field.images || !field.tracks || !field.reports) {
+  if (demo.isPending || field.isPending || !field.scene || !field.images || !field.tracks || !field.reports) {
     return <Skeleton className="m-3 h-[calc(100%-1.5rem)]" />
   }
-  const tickParam = Number(params.get('tick') ?? 0)
-  const at = /^\d{2}:\d{2}$/.test(params.get('at') ?? '') ? toMinute(params.get('at') ?? '') : null
+  const fieldData = { scene: field.scene, images: field.images, tracks: field.tracks, reports: field.reports }
+  if (!demo.model?.ticks.length) return <NoRecording field={fieldData} windows={demo.windows} />
   return (
     <WatchPlayer
       key={demo.recordingId}
       model={demo.model}
-      field={{ scene: field.scene, images: field.images, tracks: field.tracks, reports: field.reports }}
-      initialTick={tickParam > 0 ? tickParam - 1 : null}
-      initialMinute={at}
+      field={fieldData}
       initialVehicle={params.get('vehicle')}
       initialTab={params.get('tab') === 'watchers' || params.get('tab') === 'reports' ? (params.get('tab') as 'watchers' | 'reports') : 'supervisor'}
-      recordings={demo.recordings?.map((r) => r.recording_id) ?? []}
-      recordingId={demo.recordingId}
-      onRecording={setRecordingId}
     />
   )
 }
 
+type FieldData = { scene: Scene; images: ImageMeta[]; tracks: MapTrack[]; reports: MapReport[] }
+
 interface PlayerProps {
   model: DemoModel
-  field: { scene: Scene; images: ImageMeta[]; tracks: MapTrack[]; reports: MapReport[] }
-  initialTick: number | null
-  initialMinute: number | null
+  field: FieldData
   initialVehicle: string | null
   initialTab: 'supervisor' | 'watchers' | 'reports'
-  recordings: string[]
-  recordingId: string | null
-  onRecording: (id: string) => void
 }
 
-function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle, initialTab, recordings, recordingId, onRecording }: PlayerProps) {
+function WatchPlayer({ model, field, initialVehicle, initialTab }: PlayerProps) {
   const w = t.watch
-  const first = model.ticks[0]?.minute ?? 0
-  const last = model.ticks[model.ticks.length - 1]?.minute ?? first
-  const jump = initialTick !== null ? model.ticks[Math.min(initialTick, model.ticks.length - 1)]?.minute : undefined
-  // 1x = one tick (5 simulated minutes) per 20 s, so the streamed text stays readable.
-  const clock = useClock(first - TICK_MIN, last, { initialMinute: initialMinute ?? jump ?? first - TICK_MIN, baseMinPerSec: 0.25 })
+  const clock = useMasterClock()
   const [selected, setSelected] = useState<string | null>(initialVehicle)
   const navigate = useNavigate()
 
@@ -119,15 +106,6 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
       <div className="flex h-full flex-col gap-3 p-3">
         <div className="flex flex-wrap items-center justify-end gap-3">
           <TickBar ticks={model.ticks} current={head.index} complete={complete} threat={threat} onSeek={clock.seek} />
-          {recordings.length > 1 && (
-            <select aria-label={w.recording} className="rounded-md border bg-card px-2 py-1 font-mono text-sm" value={recordingId ?? ''} onChange={(e) => onRecording(e.target.value)}>
-              {recordings.map((id) => (
-                <option key={id} value={id}>
-                  {id}
-                </option>
-              ))}
-            </select>
-          )}
         </div>
 
         <div className="flex min-h-0 flex-1 gap-3">
@@ -144,7 +122,6 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
               onOpenFrame={(id) => void navigate(`/analysis/${id}`)}
             />
             <div className="pointer-events-none absolute top-3 left-3 rounded-md border bg-card/90 px-3 py-1.5 shadow-sm backdrop-blur">
-              <p className="font-mono text-2xl font-semibold">{hhmm(clock.minute)}</p>
               <p className="text-[11px] text-muted-foreground">{complete ? w.evaluated(tick.tick) : w.evaluating(tick.tick)}</p>
             </div>
             {selected && (
@@ -212,18 +189,7 @@ function WatchPlayer({ model, field, initialTick, initialMinute, initialVehicle,
           </aside>
         </div>
 
-        <TimeBar
-          start={clock.start}
-          end={clock.end}
-          minute={clock.minute}
-          playing={clock.playing}
-          speed={clock.speed}
-          ticks={model.ticks.map((tv) => ({ minute: tv.minute, kind: 'frame' as const }))}
-          activity={[]}
-          onToggle={clock.toggle}
-          onSpeed={clock.cycleSpeed}
-          onSeek={clock.seek}
-        />
+        <TimeBar ticks={model.ticks.map((tv) => ({ minute: tv.minute, kind: 'frame' as const }))} activity={[]} />
       </div>
     </VehicleLinkContext.Provider>
   )

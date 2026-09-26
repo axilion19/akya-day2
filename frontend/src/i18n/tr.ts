@@ -3,6 +3,19 @@ export const tr = {
   app: { name: 'AKYA', tagline: 'Üs Güvenliği Karar Destek' },
   sidebar: { menu: 'Ana menü', home: 'Ana sayfa', collapse: 'Menüyü daralt', expand: 'Menüyü genişlet' },
   nav: { overview: 'Genel Bakış', map: 'Saha Haritası', watch: 'İzleme' },
+  clock: {
+    title: 'Ana saat',
+    live: 'Canlı',
+    paused: 'Duraklatıldı',
+    behind: (n: number) => `Canlıdan ${n} dk geride`,
+    behindShort: (n: number) => `−${n} dk`,
+    goLive: 'Canlı',
+    play: 'Oynat',
+    pause: 'Duraklat',
+    speed: (x: number) => `${x}x`,
+    speedLabel: 'Oynatma hızı · tıkla: hızlandır',
+    notYet: 'henüz yayınlanmadı',
+  },
   status: {
     api: 'API',
     llm: 'LLM',
@@ -223,6 +236,8 @@ export const tr = {
   overview: {
     title: 'Operasyon Genel Bakış',
     subtitle: (n: number) => `${n} kare · analiz etmek için birini seçin`,
+    asOf: (time: string, total: number) => `${time} itibarıyla (günün ${total} karesinden)`,
+    noneYet: (time: string) => `${time} itibarıyla henüz kare alınmadı. Saat ilerledikçe kareler burada görünür.`,
     empty: 'Kare bulunamadı. Veri klasörünü kontrol edin.',
     filters: {
       label: 'Kare filtreleri',
@@ -339,6 +354,8 @@ export const tr = {
     moreVehicles: (n: number) => `+${n} araç daha`,
     start: "Oynat'a basın: gözcüler ve baş denetçi kayıttaki gibi sırayla yazar.",
     loadError: 'Kayıt yüklenemedi. API çalışıyor mu?',
+    noRecording: 'Bu saat için kayıtlı ajan çalıştırması yok; harita yalnızca araç izlerini gösteriyor.',
+    recordedWindows: (spans: string) => `Kayıtlı çalıştırmalar: ${spans}. Saati kaydırın ya da canlı yayını bekleyin.`,
     activeVehicles: (n: number) => `${n} aktif araç`,
     levels: (low: number, med: number, high: number) => `${low} düşük · ${med} orta · ${high} yüksek`,
     checks: 'Bu tik kontrol edilen sektörler',

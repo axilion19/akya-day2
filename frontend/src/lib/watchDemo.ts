@@ -1,6 +1,6 @@
 // Groups a recorded watch run's events by tick for the demo player. No domain logic: levels,
 // reasons and alerts are exactly what the agents produced; this only indexes them.
-import type { FieldReport, ReportJudgment, VehicleRow, WatchEvent, WatchEventOf, WatchLevel } from '@/api/types'
+import type { FieldReport, ReportJudgment, VehicleRow, WatchEvent, WatchEventOf, WatchLevel, WatchRecording } from '@/api/types'
 
 export interface TickView {
   tick: string
@@ -277,4 +277,27 @@ export function vehicleTypes(model: DemoModel, head: Playhead): Map<string, stri
     for (const f of tv.frames) for (const d of f.detections) if (d.track_id) types.set(d.track_id, d.label)
   })
   return types
+}
+
+// ---- which recording plays at a master-clock minute ----
+
+/** The recording whose ticks cover `minute` (its first window starts 5 minutes before its first
+ *  tick); the longest if several do, null if none. */
+export function recordingAt(list: WatchRecording[], minute: number): string | null {
+  let best: WatchRecording | null = null
+  for (const r of list) {
+    const first = r.ticks[0]
+    const last = r.ticks[r.ticks.length - 1]
+    if (!first || !last || minute < toMinute(first) - TICK_MIN || minute > toMinute(last)) continue
+    if (!best || r.ticks.length > best.ticks.length) best = r
+  }
+  return best?.recording_id ?? null
+}
+
+/** "10:05-11:10": the clock span a recording covers. */
+export function recordingWindow(r: WatchRecording): string {
+  const first = r.ticks[0] ?? '00:00'
+  const start = toMinute(first) - TICK_MIN
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(Math.floor(start / 60))}:${pad(start % 60)}-${r.ticks[r.ticks.length - 1] ?? first}`
 }

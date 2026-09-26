@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import type { ImageMeta, LatLon, MapReport, MapTrack, Scene } from '@/api/types'
 import { Button } from '@/components/ui/button'
-import { useClock } from '@/hooks/useClock'
+import { useMasterClock } from '@/hooks/useMasterClock'
 import { useTrackMotion } from '@/hooks/useFieldMap'
 import { useFieldMapModel } from '@/hooks/useFieldMapModel'
 import { useMapViewport } from '@/hooks/useMapViewport'
@@ -32,10 +32,10 @@ interface Props {
 
 type Selection = { kind: 'track' | 'report' | 'frame'; id: string } | null
 
-/** Field map: every track, frame and report of the day, driven by one simulated clock. */
+/** Field map: every track, frame and report of the day, on the master clock. */
 export function FieldMapView({ scene, images, tracks, reports }: Props) {
   const model = useFieldMapModel(scene, images, tracks, reports)
-  const clock = useClock(model.start, model.end)
+  const clock = useMasterClock()
   const { ref: svgRef, viewBox, bounds, mpp, flyTo, fit, handlers } = useMapViewport(model.fitRadiusM)
   const navigate = useNavigate()
   const [visible, setVisible] = useState<Record<LegendKey, boolean>>({ zones: true, tracks: true, frames: true, official: true, third_party: true })
@@ -142,10 +142,7 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
       </svg>
 
       <div className="absolute top-3 bottom-[5.5rem] left-3 flex min-h-0 flex-col gap-3 overflow-y-auto [scrollbar-width:thin]">
-        <div className="pointer-events-none flex items-baseline gap-3 self-start rounded-lg border bg-card/90 px-4 py-1.5 backdrop-blur">
-          <span className="font-mono text-3xl font-semibold tracking-wider text-foreground" aria-live="off">
-            {hhmm(minute)}
-          </span>
+        <div className="pointer-events-none self-start rounded-lg border bg-card/90 px-3 py-1.5 backdrop-blur">
           <span className="font-mono text-[11px] text-muted-foreground">
             <span className="text-emerald-700">{t.fieldMap.activeTracks(activeTracks)}</span> · <span className="text-sky-700">{t.fieldMap.reportsSoFar(feed.length)}</span>
           </span>
@@ -212,18 +209,7 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
       </Button>
 
       <div className="absolute bottom-3 left-3" style={{ right: rightInset }}>
-        <TimeBar
-          start={clock.start}
-          end={clock.end}
-          minute={minute}
-          playing={clock.playing}
-          speed={clock.speed}
-          ticks={model.ticks}
-          activity={model.activity}
-          onToggle={clock.toggle}
-          onSpeed={clock.cycleSpeed}
-          onSeek={clock.seek}
-        />
+        <TimeBar ticks={model.ticks} activity={model.activity} />
       </div>
     </div>
   )

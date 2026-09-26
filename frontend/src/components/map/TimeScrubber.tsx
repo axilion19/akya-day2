@@ -17,6 +17,8 @@ interface Props {
   start: number
   end: number
   minute: number
+  /** Live edge: the part after it is not broadcast yet (dimmed; seeking stops there). */
+  live?: number
   ticks: TimeTick[]
   activity: ActivityBin[]
   onSeek: (minute: number) => void
@@ -31,7 +33,7 @@ const DOT: Record<Exclude<TimeTick['kind'], 'frame'>, string> = {
 }
 
 /** Scrubber with labelled lanes: active-track curve, frames, reports and an hour axis. */
-export function TimeScrubber({ start, end, minute, ticks, activity, onSeek }: Props) {
+export function TimeScrubber({ start, end, minute, live = end, ticks, activity, onSeek }: Props) {
   const lanes = t.fieldMap.lanes
   const ref = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<number | null>(null)
@@ -147,6 +149,14 @@ export function TimeScrubber({ start, end, minute, ticks, activity, onSeek }: Pr
               {hhmm(hover)}
             </span>
           </>
+        )}
+        {/* Not broadcast yet: after the live edge. */}
+        {live < end && (
+          <span
+            className="pointer-events-none absolute top-0 right-0 bottom-3 bg-[repeating-linear-gradient(135deg,transparent_0_4px,var(--color-border)_4px_5px)] opacity-80"
+            style={{ left: pct(live) }}
+            title={t.clock.notYet}
+          />
         )}
         {/* Playhead through all lanes. */}
         <span className="pointer-events-none absolute top-0 bottom-3 w-0.5 -translate-x-1/2 rounded bg-emerald-300 shadow-[0_0_8px] shadow-emerald-400/60" style={{ left: pct(minute) }} />

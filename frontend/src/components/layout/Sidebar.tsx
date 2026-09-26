@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { t } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { SidebarClock } from './SidebarClock'
 
 const NAV = [
   { to: '/overview', label: t.nav.overview, icon: LayoutGrid },
@@ -86,6 +87,7 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto flex flex-col gap-3 border-t p-3">
+        <SidebarClock open={open} />
         <Button
           size="icon-sm"
           variant="ghost"
