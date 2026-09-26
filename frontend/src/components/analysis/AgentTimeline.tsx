@@ -11,7 +11,7 @@ interface AgentTimelineProps {
   onSelect: (step: number) => void
 }
 
-/** Chat-like agent log: the operator's request, then one message per revealed step. */
+/** Chat-like agent log: one message per revealed step. */
 export function AgentTimeline({ analysis, revealed, onSelect }: AgentTimelineProps) {
   const activeRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -26,10 +26,6 @@ export function AgentTimeline({ analysis, revealed, onSelect }: AgentTimelinePro
   const steps = analysis.steps.slice(0, revealed)
   return (
     <section aria-label={t.analysis.timeline} className="flex flex-col gap-2.5">
-      <div className="ml-auto max-w-xs rounded-lg border bg-secondary px-4 py-2.5">
-        <p className="font-mono text-[10px] tracking-widest text-muted-foreground">{t.narrative.userLabel}</p>
-        <p className="text-sm">{t.narrative.user(analysis.image_id)}</p>
-      </div>
       {steps.map((step) => (
         <div key={step.step} ref={step.index === revealed ? activeRef : undefined}>
           <StepCard

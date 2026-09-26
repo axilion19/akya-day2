@@ -210,8 +210,6 @@ export const tr = {
     no_track: 'İz kaydı yok',
   } as Record<string, string>,
   narrative: {
-    user: (id: string) => `${id}'ı değerlendir.`,
-    userLabel: 'KULLANICI',
     load: "Boyut, çekim saati ve köşe koordinatlarını image_meta.json'dan okudum.",
     detect: (n: number) =>
       n === 0 ? 'Tespit modeli karede araç bulamadı.' : `1. gün modelim görüntüde ${n} araç buldu.`,
