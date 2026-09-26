@@ -12,13 +12,13 @@ import { hhmm, unproject } from '@/lib/fieldMap'
 import { BaseMarker } from './BaseMarker'
 import { FrameLayer } from './FrameLayer'
 import { MapGrid } from './MapGrid'
-import { MapLegend } from './MapLegend'
+import { type LegendKey, MapLegend } from './MapLegend'
 import { ReportFeed } from './ReportFeed'
 import { ReportLayer } from './ReportLayer'
 import { TimeBar } from './TimeBar'
 import { TrackDetail } from './TrackDetail'
 import { TrackLayer } from './TrackLayer'
-import { type LayerKey, type SourceKey, ZonePanel } from './ZonePanel'
+import { ZonePanel } from './ZonePanel'
 import { ZoneLayer } from './ZoneLayer'
 
 interface Props {
@@ -36,19 +36,18 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
   const clock = useClock(model.start, model.end)
   const { ref: svgRef, viewBox, mpp, flyTo, fit, handlers } = useMapViewport(model.fitRadiusM)
   const navigate = useNavigate()
-  const [layers, setLayers] = useState<Record<LayerKey, boolean>>({ tracks: true, frames: true, reports: true })
-  const [sources, setSources] = useState<Record<SourceKey, boolean>>({ official: true, third_party: true })
+  const [visible, setVisible] = useState<Record<LegendKey, boolean>>({ zones: true, tracks: true, frames: true, official: true, third_party: true })
   const [zone, setZone] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection>(null)
   const [cursor, setCursor] = useState<LatLon | null>(null)
 
   const minute = clock.minute
   const inZone = (z: string | null) => zone === null || z === zone
-  const sourceOn = (s: string) => sources[s as SourceKey] ?? true
+  const sourceOn = (s: string) => (s === 'official' || s === 'third_party' ? visible[s] : true)
 
-  const visibleTracks = layers.tracks ? model.tracks.filter((tr) => inZone(tr.zone)) : []
-  const visibleFrames = layers.frames ? model.frames.filter((f) => inZone(f.zone)) : []
-  const visiblePins = layers.reports ? model.reports.filter((r) => sourceOn(r.source) && inZone(r.zone)) : []
+  const visibleTracks = visible.tracks ? model.tracks.filter((tr) => inZone(tr.zone)) : []
+  const visibleFrames = visible.frames ? model.frames.filter((f) => inZone(f.zone)) : []
+  const visiblePins = model.reports.filter((r) => sourceOn(r.source) && inZone(r.zone))
   const feed = reports.filter((r) => r.time_min <= minute && sourceOn(r.source) && inZone(r.zone ?? null)).reverse()
 
   const counts: Record<string, { tracks: number; reports: number }> = {}
@@ -101,7 +100,7 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
         <rect x={-1e5} y={-1e5} width={2e5} height={2e5} fill="transparent" onClick={() => setSelection(null)} />
         <MapGrid extentM={Math.ceil(model.fitRadiusM / 1000) * 1000 + 3000} mpp={mpp} />
         <ZoneLayer
-          zones={model.zones}
+          zones={visible.zones ? model.zones : []}
           mpp={mpp}
           activeZone={zone}
           flashZone={selectedReport && !selectedReport.location ? (selectedReport.zone ?? null) : null}
@@ -140,13 +139,9 @@ export function FieldMapView({ scene, images, tracks, reports }: Props) {
           activeZone={zone}
           counts={counts}
           onZone={selectZone}
-          layers={layers}
-          onLayer={(k) => setLayers((l) => ({ ...l, [k]: !l[k] }))}
-          sources={sources}
-          onSource={(k) => setSources((s) => ({ ...s, [k]: !s[k] }))}
         />
         <div className="max-w-md">
-          <MapLegend />
+          <MapLegend visible={visible} onToggle={(k) => setVisible((v) => ({ ...v, [k]: !v[k] }))} />
         </div>
       </div>
 

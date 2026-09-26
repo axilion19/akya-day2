@@ -1,38 +1,16 @@
 import { Crosshair } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { t } from '@/i18n'
 import { cn } from '@/lib/utils'
-
-export type LayerKey = 'tracks' | 'frames' | 'reports'
-export type SourceKey = 'official' | 'third_party'
 
 interface Props {
   zones: string[]
   activeZone: string | null
   counts: Record<string, { tracks: number; reports: number }>
   onZone: (zone: string | null) => void
-  layers: Record<LayerKey, boolean>
-  onLayer: (key: LayerKey) => void
-  sources: Record<SourceKey, boolean>
-  onSource: (key: SourceKey) => void
 }
 
-function Toggle({ on, label, onClick }: { on: boolean; label: string; onClick: () => void }) {
-  return (
-    <Button
-      size="xs"
-      variant={on ? 'secondary' : 'ghost'}
-      aria-pressed={on}
-      onClick={onClick}
-      className={cn('justify-start', !on && 'text-muted-foreground line-through')}
-    >
-      {label}
-    </Button>
-  )
-}
-
-/** Left panel: zone list (click = focus + filter), layer and source toggles. */
-export function ZonePanel({ zones, activeZone, counts, onZone, layers, onLayer, sources, onSource }: Props) {
+/** Left panel: zone list (click = focus + filter). Layer toggles live in the legend. */
+export function ZonePanel({ zones, activeZone, counts, onZone }: Props) {
   const fm = t.fieldMap
   return (
     <div className="flex w-56 flex-col gap-3 rounded-lg border bg-card/85 p-3 backdrop-blur">
@@ -76,20 +54,6 @@ export function ZonePanel({ zones, activeZone, counts, onZone, layers, onLayer, 
           )
         })}
       </nav>
-      <div className="flex flex-col gap-1">
-        <span className="text-[10px] font-medium tracking-wider text-muted-foreground">{fm.layers.toLocaleUpperCase('tr-TR')}</span>
-        {(Object.keys(fm.layer) as LayerKey[]).map((k) => (
-          <Toggle key={k} on={layers[k]} label={fm.layer[k]} onClick={() => onLayer(k)} />
-        ))}
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-[10px] font-medium tracking-wider text-muted-foreground">{fm.sources.toLocaleUpperCase('tr-TR')}</span>
-        <div className="flex gap-1">
-          {(['official', 'third_party'] as const).map((k) => (
-            <Toggle key={k} on={sources[k]} label={fm.source[k] ?? k} onClick={() => onSource(k)} />
-          ))}
-        </div>
-      </div>
     </div>
   )
 }
