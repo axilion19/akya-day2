@@ -111,7 +111,7 @@ def test_watch_recordings_are_listed_and_served(
     )
     (tmp_path / "stale.jsonl").write_text('{"type": "authority_alert", "tick": "10:00"}')
     settings = golden_settings.model_copy(update={"recordings_dir": tmp_path})
-    for client in _client(settings, golden_repo):
+    for client in _client(settings, golden_repo, tmp_path / "admin_overrides.json"):
         (rec,) = client.get("/api/watch/recordings").json()
         assert rec["recording_id"] == "demo" and rec["ticks"] == ["14:00", "14:05"]
         assert rec["llm_turns"] > 0 and rec["events"] == len(events)

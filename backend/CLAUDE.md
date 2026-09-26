@@ -22,7 +22,8 @@ api/routes  →  agent/  →  services/  →  domain/
 - `services/` — pure, deterministic, synchronous functions (geo, tracks, motion, reports matching, risk). No LLM, no FastAPI, no global state. Unit-tested.
 - `agent/` — orchestration: `pipeline.py` (8-step state machine), `chat_agent.py` (tool-calling loop), `tools.py` (typed wrappers around services for the chat agent), `llm_client.py`, `fallback.py`, `prompts/`.
 - `agent/watch/` — watch mode (AGENT_DESIGN §12): `runner.py` (tick loop), `watcher.py` / `supervisor.py` (LLM turns via `loop.py`), `registry.py` (level rules), `boards.py` (trackers, alerts), `tools.py`, `store.py` (background runs + event buffers).
-- `api/routes/` — thin: validate input, call agent/services, return domain models. No business logic in routes.
+- `agent/tuning_store.py` — admin override file (load/save/reset), `TuningView`, prompt preview, `with_agent_knobs`.
+- `api/routes/` — thin: validate input, call agent/services, return domain models. No business logic in routes. `admin.py` serves `/api/admin/*` (unprotected by design for the local demo).
 - `core/` — settings, logging, error types, exception handlers.
 
 ## Coding rules
@@ -33,6 +34,7 @@ api/routes  →  agent/  →  services/  →  domain/
 - Pure functions return values; no mutation of inputs.
 - No bare `except`. Raise typed errors from `core/errors.py`; one exception handler maps them to JSON `{error, detail}`.
 - Config only via `core/config.py` (`Settings`, env prefix `SENTINEL_`). No `os.getenv` elsewhere. Tunables from AGENT_DESIGN (`DETECT_CONF_MIN`, `MATCH_MAX_M`, `REPORT_RADIUS_M`, `STOP_SPEED_MS`, `ZONE_RADIUS_M`) live there.
+- Risk thresholds are module constants that seed `DEFAULT_TUNING` (`services/tuning.py`); functions take the tuning sub-model as a defaulted keyword argument. The admin's changes live in `.cache/admin_overrides.json` and are snapshotted per analysis / watch run (AGENT_DESIGN §13).
 - Logging: stdlib `logging` with structured `extra={...}`; log each pipeline step duration and each LLM call (model, tokens, latency, cache hit). Never log API keys.
 
 ## Agent rules

@@ -229,3 +229,14 @@ Design and walk-through: `docs/AGENT_FLOW.md`. Prompts, tools, models and exampl
 - **Trackers:** off by default (`SENTINEL_TRACKERS_ENABLED`); when on, code follows the real track, `LOST` when it ends (mock extension is backlog).
 - **Events (SSE):** `tick_started` (with each watcher's sector), `frame_analyzed`, `agent_trace`, `watcher_report`, `level_changed`, `supervisor_decision`, `operator_alert`, `tracker_update`, `warning`, `tick_completed` (discriminated union `WatchEvent`).
 - **Endpoints:** `POST /api/watch/runs`, `GET /api/watch/runs/{id}`, `GET /api/watch/runs/{id}/events` (SSE, replays from the start), `GET /api/watch/runs/{id}/log` (typed list), `GET /api/watch/recordings[/{id}]` (recorded runs replayed by the UI's demo page `/watch`).
+
+## 13. Admin tuning
+
+Design: `docs/superpowers/specs/2026-09-26-admin-agent-tuning-design.md`. Code: `backend/app/domain/tuning.py`, `backend/app/services/tuning.py`, `backend/app/agent/tuning_store.py`, `backend/app/api/routes/admin.py`.
+
+- **What:** `AgentTuning` holds every threshold that marks a vehicle risky (behavior classes, moving groups, rubric tiers and points, level ceiling rules, which rows go to the LLM in full), the agent knobs (lookup limits, spot checks, reasoning effort, output language; `null` = the `Settings` value) and optional prompt override texts.
+- **Defaults:** the existing module constants in `services/behavior.py` and `services/risk.py` seed `DEFAULT_TUNING`; service functions take the tuning sub-model as a keyword argument defaulting to it, so behavior with defaults is unchanged.
+- **Storage:** only the admin's differences from the defaults, in `backend/.cache/admin_overrides.json` (gitignored). A missing file means defaults; an unreadable or stale file means defaults plus a `load_warning` — it never breaks a run.
+- **Snapshot:** a frame analysis and a watch run (`POST /api/watch/runs`, `make watch-demo`) read the tuning once at start. The analysis cache is keyed by `(image_id, tuning_hash)`. Recorded sessions on `/watch` do not change; record a new one with `make watch-demo SAVE=<name>`.
+- **Prompts:** `watcher_v8` / `supervisor_v8` are v7 with the threshold numbers as `{{variables}}` filled from the tuning (identical text with defaults, tested). An override must contain exactly the file's variables; one that still fails at render time falls back to the file with a `warning` event.
+- **API:** `GET/PUT/DELETE /api/admin/tuning` → `TuningView`; `POST /api/admin/prompts/preview`. Rule breaks return 422 `{error: "invalid_tuning", detail: "<dotted.path>: <code> [arg]; ..."}`; the UI translates the codes. Unprotected by design for the local demo (auth is a frontend mock).

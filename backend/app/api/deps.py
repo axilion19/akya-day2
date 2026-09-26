@@ -1,12 +1,17 @@
 """Shared FastAPI dependencies (singletons built once per process)."""
 
 from functools import lru_cache
+from typing import Annotated
+
+from fastapi import Depends
 
 from app.agent.llm_client import ChatLLM, build_llm
 from app.agent.store import AnalysisStore
+from app.agent.tuning_store import TuningStore
 from app.agent.watch.store import WatchRunStore
 from app.core.config import get_settings
 from app.data.repository import Repository
+from app.domain.tuning import AgentTuning
 from app.services.detection import Detector, build_detector, build_fallback_detector
 
 
@@ -44,3 +49,14 @@ def get_llm() -> ChatLLM | None:
 def get_watch_store() -> WatchRunStore:
     """In-memory watch runs."""
     return WatchRunStore()
+
+
+@lru_cache
+def get_tuning_store() -> TuningStore:
+    """Admin override file under the cache dir."""
+    return TuningStore(get_settings().cache_dir / "admin_overrides.json")
+
+
+def get_tuning(store: Annotated[TuningStore, Depends(get_tuning_store)]) -> AgentTuning:
+    """Tuning snapshot for one request (defaults if the file is unusable)."""
+    return store.load()[0]
