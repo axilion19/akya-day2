@@ -159,6 +159,16 @@ def system_prompt(ctx: t.WatchContext) -> str:
     )
 
 
+def plain_text_reply(trace: list[dict[str, Any]]) -> str | None:
+    """The model's last plain-text answer, when it answered without calling reply_operator
+    (the reply is free text, so a written answer is still the answer)."""
+    for step in reversed(trace):
+        text = str(step.get("content") or "").strip() if step.get("step") == "llm" else ""
+        if text:
+            return text
+    return None
+
+
 def _parse(args: dict[str, Any]) -> OperatorReply:
     return OperatorReply.model_validate(args)
 
@@ -198,14 +208,17 @@ async def run_operator_turn(
         max_lookups=ctx.settings.supervisor_max_tool_calls,
         lookup_tools=t.LOOKUP_TOOLS,
     )
-    out = loop.output
+    warnings = list(loop.warnings)
+    reply = loop.output.reply if loop.output is not None else plain_text_reply(loop.trace)
+    if loop.output is None and reply is not None:
+        warnings.append("reply taken from the model's text (reply_operator not called)")
     return OperatorOutcome(
-        reply=out.reply if out is not None else operator_fallback(lang),
-        generated_by="llm" if out is not None else "fallback",
+        reply=reply if reply is not None else operator_fallback(lang),
+        generated_by="llm" if reply is not None else "fallback",
         duration_ms=loop.duration_ms,
         actions=effects.actions,
         tool_calls=loop.tool_calls,
-        warnings=loop.warnings,
+        warnings=warnings,
         system=system,
         user=user,
         trace=loop.trace,

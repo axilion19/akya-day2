@@ -118,3 +118,47 @@ def test_supervisor_may_not_alert_about_announced_vehicles(
     }
     with pytest.raises(BoardError, match="announced by the operator"):
         effects.alert_operator(args)
+
+
+def test_a_plain_text_answer_is_the_reply(
+    golden_repo: Repository, golden_settings: Settings
+) -> None:
+    """The model registers the vehicle, then answers in text instead of calling reply_operator."""
+    from app.agent.llm_client import ChatResult
+    from app.agent.watch.operator import OperatorBoard, OperatorInput, run_operator_turn
+    from app.domain.watch import ExpectedVehicle
+
+    ctx = make_ctx(golden_repo, golden_settings)
+    sector = golden_repo.scene.zones[0].name
+    registered: list[ExpectedVehicle] = []
+
+    def register(v: ExpectedVehicle) -> ExpectedVehicle:
+        registered.append(v.model_copy(update={"expected_id": "EXP-1"}))
+        return registered[-1]
+
+    args = {
+        "description": "van",
+        "sector": sector,
+        "arrive_from": "14:00",
+        "arrive_to": "14:20",
+        "vehicle_type": "van",
+    }
+    text = ChatResult(content="EXP-1 kaydedildi; LOW tutulacak.", finish_reason="stop")
+    llm = FakeLLM([submit("register_expected_vehicle", args), text, text])
+    inp = OperatorInput(
+        tick="14:05",
+        time="14:01",
+        text="a van is coming",
+        layout={},
+        dedicated={},
+        flagged=[],
+        expected=[],
+    )
+    out = await_(run_operator_turn(llm, ctx, inp, OperatorBoard(lambda s, r: "W5", register)))
+    assert out.generated_by == "llm" and out.reply == "EXP-1 kaydedildi; LOW tutulacak."
+    assert [a.tool for a in out.actions] == ["register_expected_vehicle"] and registered
+    assert any("reply taken from the model's text" in w for w in out.warnings)
+
+
+def await_(coro: Any) -> Any:
+    return asyncio.run(coro)
