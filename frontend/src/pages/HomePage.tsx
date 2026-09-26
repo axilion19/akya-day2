@@ -1,4 +1,4 @@
-import { Activity, Camera, Images, Navigation, RadioTower } from 'lucide-react'
+import { Activity, Images, Navigation, RadioTower } from 'lucide-react'
 import { Link } from 'react-router'
 import { useMemo } from 'react'
 import type { Analysis } from '@/api/types'
@@ -15,7 +15,6 @@ import { useFieldMapData } from '@/hooks/useFieldMap'
 import { useMasterClock } from '@/hooks/useMasterClock'
 import { t } from '@/i18n'
 import { hhmm } from '@/lib/fieldMap'
-import { placeName } from '@/lib/format'
 import { dayBounds, situationAt } from '@/lib/situation'
 import { maxLevel, watchedVehicles } from '@/lib/watchlist'
 
@@ -55,8 +54,8 @@ export function HomePage() {
     return (
       <div className="flex flex-col gap-4 p-6">
         <Skeleton className="h-10 w-80" />
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-32" />)}
+        <div className="grid grid-cols-3 gap-4">
+          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-32" />)}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -93,7 +92,7 @@ export function HomePage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-3 gap-4">
         <KpiTile icon={Activity} accent="text-emerald-700" label={th.kpi.tracks} value={sit.activeTracks} detail={th.kpi.tracksTrend(delta)} note={th.kpi.tracksTotal(sit.tracksSoFar)} />
         <KpiTile
           icon={Navigation}
@@ -104,14 +103,6 @@ export function HomePage() {
           note={th.kpi.closingNote}
         />
         <KpiTile icon={RadioTower} accent="text-sky-700" label={th.kpi.reports} value={sit.reportsRecent.length} detail={th.kpi.reportsSplit(official, sit.reportsRecent.length - official)} note={th.kpi.reportsTotal(sit.reportsSoFar)} />
-        <KpiTile
-          icon={Camera}
-          accent="text-sky-700"
-          label={th.kpi.frames}
-          value={sit.framesSoFar}
-          unit={`/ ${sit.framesTotal}`}
-          detail={sit.lastFrame ? th.kpi.framesLast(sit.lastFrame.capture_time, sit.lastFrame.zone ? placeName(sit.lastFrame.zone) : '—') : th.kpi.framesNone}
-        />
       </div>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
@@ -131,14 +122,13 @@ export function HomePage() {
               />
             ))}
           </div>
+          <ActivityChart series={sit.series} reportMarks={sit.reportMarks} start={sit.start} end={sit.end} now={now} />
         </section>
         <div className="flex flex-col gap-5">
           <VehicleWatchList vehicles={top} isPending={analysesPending} />
           <RecentReports reports={sit.latestReports.slice(0, REPORT_LIMIT)} />
         </div>
       </div>
-
-      <ActivityChart series={sit.series} reportMarks={sit.reportMarks} start={sit.start} end={sit.end} now={now} />
     </div>
   )
 }
