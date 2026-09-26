@@ -2,13 +2,17 @@
 
 import math
 
+from app.data.repository import Repository
 from app.domain.geo import LatLon
 from app.domain.track import TrackPoint
 from app.domain.tuning import Tier
 from app.services import risk
 from app.services.behavior import DEFAULT_BEHAVIOR, behavior_class
 from app.services.geo import offset_m
+from app.services.motion import motion_profile
 from app.services.risk import DEFAULT_CEILING, DEFAULT_RUBRIC, level_ceiling, level_for
+from app.services.tuning import DEFAULT_TUNING
+from app.services.watch import track_rubric
 
 BASE = LatLon(lat=39.93, lon=32.85)
 
@@ -64,3 +68,20 @@ def test_distance_tiers_are_read_from_the_rubric() -> None:
     tiers = [Tier(limit=500, points=30), Tier(limit=2000, points=20), Tier(limit=4000, points=10)]
     custom = DEFAULT_RUBRIC.model_copy(update={"distance_tiers": tiers})
     assert risk.distance_factor(900, custom).points == 20
+
+
+def test_track_rubric_uses_the_tuning(golden_repo: Repository) -> None:
+    track = next(iter(golden_repo.tracks.values()))
+    last = track.points[-1].time_min
+    base, zones = golden_repo.scene.base.position, golden_repo.scene.zones
+    motion = motion_profile(track, last, base, zones, 1.0, 2000)
+    before = track_rubric(motion)
+    rubric = DEFAULT_TUNING.rubric.model_copy(update={"level_step": 50, "heading_points": 0})
+    tuned = DEFAULT_TUNING.model_copy(update={"rubric": rubric})
+    after = track_rubric(motion, tuning=tuned)
+    assert after.level == level_for(after.score, rubric)
+    heading = next(f for f in after.factors if f.name == "heading_to_base")
+    assert heading.points == 0
+    assert before.score - after.score == next(
+        f.points for f in before.factors if f.name == "heading_to_base"
+    )

@@ -22,6 +22,7 @@ from app.domain.geo import LatLon
 from app.domain.image import ImageMeta
 from app.domain.report import ReportAssessment
 from app.domain.track import TrackSnapshot
+from app.domain.tuning import AgentTuning
 from app.domain.watch import BehaviorClass
 from app.services import motion as motion_svc
 from app.services import reports as report_svc
@@ -37,6 +38,7 @@ from app.services.geo import (
     pixel_to_latlon,
 )
 from app.services.tracks import match_detections, tracks_at
+from app.services.tuning import DEFAULT_TUNING
 
 logger = logging.getLogger(__name__)
 StepCallback = Callable[[StepResult], None]
@@ -71,6 +73,7 @@ def run_analysis(
     settings: Settings,
     on_step: StepCallback | None = None,
     fallback_detector: Detector | None = None,
+    tuning: AgentTuning = DEFAULT_TUNING,
 ) -> Analysis:
     """Analyze one frame end to end.
 
@@ -245,9 +248,13 @@ def run_analysis(
 
     def behavior_of(match: TrackMatch | None) -> BehaviorClass:
         motion = motion_by_track.get(match.track_id or "") if match else None
-        return behavior_class(motion.points, repo.scene.base.position) if motion else "unknown"
+        return (
+            behavior_class(motion.points, repo.scene.base.position, tuning.behavior)
+            if motion
+            else "unknown"
+        )
 
-    groups = moving_groups(list(repo.tracks.values()), meta.capture_min)
+    groups = moving_groups(list(repo.tracks.values()), meta.capture_min, tuning.groups)
 
     def group_size_of(match: TrackMatch | None) -> int:
         return max(1, len(groups.get(match.track_id or "", []))) if match else 1
@@ -263,6 +270,9 @@ def run_analysis(
             claim_by_id,
             behavior_of(match_by_det.get(d.id)),
             group_size_of(match_by_det.get(d.id)),
+            rubric=tuning.rubric,
+            ceiling=tuning.ceiling,
+            large_group=tuning.groups.large_group,
         )
         for d in detections
     ]

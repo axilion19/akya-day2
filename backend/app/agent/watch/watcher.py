@@ -15,6 +15,7 @@ from app.agent.watch.loop import SubmitError, fill_pattern_track_ids, run_tool_l
 from app.agent.watch.prompts import render
 from app.agent.watch.registry import level_index
 from app.domain.report import ReportClaim
+from app.domain.tuning import AgentTuning
 from app.domain.watch import (
     WATCH_LEVELS,
     GeneratedBy,
@@ -24,6 +25,7 @@ from app.domain.watch import (
     WatcherReport,
     WatchLevel,
 )
+from app.services.tuning import DEFAULT_TUNING
 from app.services.watch import gated_level, rubric_watch_level
 
 PROMPT = "watcher_v7"
@@ -46,6 +48,7 @@ class WatcherInput:
     frames: list[dict[str, Any]]
     reports: list[ReportClaim]
     spot_checks: list[str] = field(default_factory=list)  # quiet vehicles sampled at random
+    tuning: AgentTuning = DEFAULT_TUNING
 
 
 @dataclass
@@ -62,7 +65,7 @@ class WatcherOutcome:
     trace: list[dict[str, Any]] = field(default_factory=list)
 
 
-def needs_judgment(row: VehicleRow) -> bool:
+def needs_judgment(row: VehicleRow, tuning: AgentTuning = DEFAULT_TUNING) -> bool:
     """Rows sent in full and required in the answer; the rest are one-liners treated as LOW."""
     return (
         rubric_watch_level(row) != "LOW"
@@ -70,13 +73,13 @@ def needs_judgment(row: VehicleRow) -> bool:
         or row.pending_level is not None
         or row.notes_count > 0
         or (row.status == "new_in_sector" and row.moving)
-        or row.closing_last5_m_per_min > 100
+        or row.closing_last5_m_per_min > tuning.judgment.closing_min_m_per_min
     )
 
 
 def judged_rows(inp: WatcherInput) -> list[VehicleRow]:
     """Rows sent in full and required in the answer: by condition, plus the random spot checks."""
-    return [r for r in inp.rows if needs_judgment(r) or r.track_id in inp.spot_checks]
+    return [r for r in inp.rows if needs_judgment(r, inp.tuning) or r.track_id in inp.spot_checks]
 
 
 def _row_json(row: VehicleRow, multi_sector: bool) -> dict[str, Any]:

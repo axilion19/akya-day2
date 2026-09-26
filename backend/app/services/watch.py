@@ -15,6 +15,7 @@ from app.domain.report import ReportClaim
 from app.domain.risk import RiskFactor, RiskLevel
 from app.domain.scene import Zone
 from app.domain.track import MotionProfile, Track, TrackPoint
+from app.domain.tuning import AgentTuning
 from app.domain.watch import (
     WATCH_LEVELS,
     BehaviorClass,
@@ -29,7 +30,6 @@ from app.services.behavior import behavior_class
 from app.services.geo import angle_diff_deg, bearing_deg, haversine_m, pixel_to_latlon
 from app.services.motion import motion_profile
 from app.services.risk import (
-    TYPE_POINTS,
     distance_factor,
     group_factor,
     level_ceiling,
@@ -38,6 +38,7 @@ from app.services.risk import (
     pattern_factor,
 )
 from app.services.tracks import match_detections, tracks_at
+from app.services.tuning import DEFAULT_TUNING
 
 WATCH_LEVEL_OF: dict[RiskLevel, WatchLevel] = {
     "LOW": "LOW",
@@ -89,26 +90,30 @@ def track_rubric(
     vehicle_type: str | None = None,
     behavior: BehaviorClass = "unknown",
     group_size: int = 1,
+    tuning: AgentTuning = DEFAULT_TUNING,
 ) -> Rubric:
     """Rubric from the track (AGENT_DESIGN §3 step 7) plus vehicle-type points when a frame
     detection gave the type; report points are left to the agents."""
+    rubric = tuning.rubric
     factors = [
-        distance_factor(motion.dist_now_m),
-        *motion_factors(motion),
-        pattern_factor(behavior),
-        group_factor(group_size),
+        distance_factor(motion.dist_now_m, rubric),
+        *motion_factors(motion, rubric),
+        pattern_factor(behavior, rubric),
+        group_factor(group_size, rubric, tuning.groups.large_group),
     ]
     if vehicle_type is not None:
         factors.append(
             RiskFactor(
-                name="vehicle_type", points=TYPE_POINTS.get(vehicle_type, 0), detail=vehicle_type
+                name="vehicle_type",
+                points=rubric.type_points.model_dump().get(vehicle_type, 0),
+                detail=vehicle_type,
             )
         )
     score = min(100, sum(f.points for f in factors))
-    return Rubric(score=score, level=level_for(score), factors=factors)
+    return Rubric(score=score, level=level_for(score, rubric), factors=factors)
 
 
-def row_ceiling(row: VehicleRow) -> WatchLevel:
+def row_ceiling(row: VehicleRow, tuning: AgentTuning = DEFAULT_TUNING) -> WatchLevel:
     """Highest level this vehicle may get (`services.risk.level_ceiling` on the row's facts)."""
     closing_now = row.moving and row.closing_last5_m_per_min > 0
     return level_ceiling(
@@ -119,6 +124,8 @@ def row_ceiling(row: VehicleRow) -> WatchLevel:
         row.eta_to_base_min,
         row.behavior_class,
         len(row.group_ids) + 1,
+        tuning.ceiling,
+        tuning.groups.large_group,
     )
 
 
@@ -202,10 +209,11 @@ def vehicle_row(
     lang: Lang,
     vehicle_type: str | None = None,
     group: list[str] | None = None,
+    tuning: AgentTuning = DEFAULT_TUNING,
 ) -> VehicleRow:
     """All facts about one vehicle at a tick. `track` must end exactly at `tick_min`."""
     motion = motion_profile(track, tick_min, base, zones, stop_speed_ms, zone_radius_m)
-    behavior = behavior_class(track.points, base)
+    behavior = behavior_class(track.points, base, tuning.behavior)
     others = [t for t in group or [] if t != track.track_id]
     here = track.points[-1].position
     sector = sector_of(here, zones)
@@ -244,14 +252,14 @@ def vehicle_row(
         current_stop_min=0 if moving else current_stop_min(motion, tick_min),
         long_stops_within_6km=len(long_stops),
         behavior_class=behavior,
-        rubric=track_rubric(motion, vehicle_type, behavior, len(others) + 1),
+        rubric=track_rubric(motion, vehicle_type, behavior, len(others) + 1, tuning),
         group_ids=others,
         registry_level=registry_level,
         pending_level=pending_level,
         notes_count=notes_count,
         one_liner="",
     )
-    row = row.model_copy(update={"max_level": row_ceiling(row)})
+    row = row.model_copy(update={"max_level": row_ceiling(row, tuning)})
     return row.model_copy(update={"one_liner": one_liner(row, lang)})
 
 

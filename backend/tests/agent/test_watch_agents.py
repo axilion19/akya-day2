@@ -5,18 +5,26 @@ from typing import Any
 import pytest
 
 from app.agent.llm_client import ChatResult
+from app.agent.tuning_store import with_agent_knobs
 from app.agent.watch import tools as t
 from app.agent.watch.boards import AlertBoard, BoardError, TrackerBoard
 from app.agent.watch.registry import CarRegistry
 from app.agent.watch.runner import WatchRunner
 from app.agent.watch.supervisor import SupervisorInput, run_supervisor
 from app.agent.watch.tools import WatchContext
-from app.agent.watch.watcher import WatcherInput, build_user_message, judged_rows, run_watcher
+from app.agent.watch.watcher import (
+    WatcherInput,
+    build_user_message,
+    judged_rows,
+    needs_judgment,
+    run_watcher,
+)
 from app.core.config import Settings
 from app.core.errors import LLMError
 from app.data.repository import Repository
 from app.services import watch as w
 from app.services.reports import extract_claim
+from app.services.tuning import DEFAULT_TUNING
 from tests.agent.fake_llm import FakeLLM, rubric_responder, submit
 
 TICK = 14 * 60 + 5
@@ -404,3 +412,39 @@ async def test_level_drops_to_the_ceiling_when_no_longer_justified(
     llm = FakeLLM([submit("submit_watch_report", good_report(ctx, "MEDIUM"))])
     out = await run_watcher(llm, ctx, watcher_input(ctx))
     assert {v.track_id: v.level for v in out.report.vehicles}[tid] == ctx.rows[tid].max_level
+
+
+def test_with_agent_knobs_only_overrides_set_values(golden_settings: Settings) -> None:
+    knobs = DEFAULT_TUNING.agents.model_copy(update={"watcher_max_tool_calls": 1})
+    s = with_agent_knobs(golden_settings, DEFAULT_TUNING.model_copy(update={"agents": knobs}))
+    assert s.watcher_max_tool_calls == 1
+    assert s.supervisor_max_tool_calls == golden_settings.supervisor_max_tool_calls
+    assert with_agent_knobs(golden_settings, DEFAULT_TUNING) is golden_settings
+
+
+def test_closing_threshold_decides_full_rows(
+    golden_repo: Repository, golden_settings: Settings
+) -> None:
+    ctx = make_ctx(golden_repo, golden_settings)
+    row = next(r for r in ctx.rows.values() if r.rubric.level == "LOW").model_copy(
+        update={
+            "closing_last5_m_per_min": 60,
+            "registry_level": "LOW",
+            "pending_level": None,
+            "notes_count": 0,
+            "status": "staying",
+            "max_level": "LOW",
+        }
+    )
+    assert not needs_judgment(row)
+    judgment = DEFAULT_TUNING.judgment.model_copy(update={"closing_min_m_per_min": 50})
+    assert needs_judgment(row, DEFAULT_TUNING.model_copy(update={"judgment": judgment}))
+
+
+def test_runner_keeps_its_start_snapshot(
+    golden_repo: Repository, golden_settings: Settings
+) -> None:
+    groups = DEFAULT_TUNING.groups.model_copy(update={"large_group": 3})
+    tuned = DEFAULT_TUNING.model_copy(update={"groups": groups})
+    runner = WatchRunner(golden_repo, golden_settings, None, lambda e: None, None, tuned)
+    assert runner.tuning is tuned
