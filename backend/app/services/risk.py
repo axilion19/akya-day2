@@ -25,6 +25,55 @@ def _tier(value: float, tiers: tuple[tuple[float, int], ...], below: bool) -> in
     return 0
 
 
+def distance_factor(dist_m: float) -> RiskFactor:
+    """Points for the current distance to the base (m)."""
+    pts = _tier(dist_m, ((1000, 30), (2000, 20), (4000, 10)), below=True)
+    return RiskFactor(name="distance_to_base", points=pts, detail=f"{dist_m:.0f} m")
+
+
+def motion_factors(motion: MotionProfile) -> list[RiskFactor]:
+    """Approach-rate, heading-at-base and long-stop points from a track's motion."""
+    factors: list[RiskFactor] = []
+    rate = motion.approach_rate_m_per_min
+    factors.append(
+        RiskFactor(
+            name="approach_rate",
+            points=_tier(rate, ((50, 25), (20, 15), (5, 5)), below=False),
+            detail=f"{rate:+.1f} m/min over 60 min",
+        )
+    )
+    pointing = (
+        motion.heading_deg is not None
+        and motion.last10_speed_ms >= MOVING_MS
+        and angle_diff_deg(motion.heading_deg, motion.bearing_to_base_deg) < HEADING_TOLERANCE_DEG
+    )
+    factors.append(
+        RiskFactor(
+            name="heading_to_base",
+            points=10 if pointing else 0,
+            detail=(
+                f"heading {motion.heading_deg:.0f}°, base at {motion.bearing_to_base_deg:.0f}°"
+                if motion.heading_deg is not None
+                else "stationary"
+            ),
+        )
+    )
+    long_stops = [
+        s
+        for s in motion.stops
+        if s.duration_min >= LONG_STOP_MIN and s.distance_to_base_m <= STOP_NEAR_BASE_M
+    ]
+    stop_pts = 0 if not long_stops else 10 + (5 if len(long_stops) > 1 else 0)
+    factors.append(
+        RiskFactor(
+            name="stops_near_base",
+            points=stop_pts,
+            detail=f"{len(long_stops)} stop(s) ≥ {LONG_STOP_MIN} min within 6 km",
+        )
+    )
+    return factors
+
+
 def score_vehicle(
     detection: Detection,
     match: TrackMatch | None,
@@ -36,48 +85,10 @@ def score_vehicle(
     factors: list[RiskFactor] = []
     dist = motion.dist_now_m if motion else detection.distance_to_base_m
     if dist is not None:
-        pts = _tier(dist, ((1000, 30), (2000, 20), (4000, 10)), below=True)
-        factors.append(RiskFactor(name="distance_to_base", points=pts, detail=f"{dist:.0f} m"))
+        factors.append(distance_factor(dist))
 
     if motion is not None:
-        rate = motion.approach_rate_m_per_min
-        factors.append(
-            RiskFactor(
-                name="approach_rate",
-                points=_tier(rate, ((50, 25), (20, 15), (5, 5)), below=False),
-                detail=f"{rate:+.1f} m/min over 60 min",
-            )
-        )
-        pointing = (
-            motion.heading_deg is not None
-            and motion.last10_speed_ms >= MOVING_MS
-            and angle_diff_deg(motion.heading_deg, motion.bearing_to_base_deg)
-            < HEADING_TOLERANCE_DEG
-        )
-        factors.append(
-            RiskFactor(
-                name="heading_to_base",
-                points=10 if pointing else 0,
-                detail=(
-                    f"heading {motion.heading_deg:.0f}°, base at {motion.bearing_to_base_deg:.0f}°"
-                    if motion.heading_deg is not None
-                    else "stationary"
-                ),
-            )
-        )
-        long_stops = [
-            s
-            for s in motion.stops
-            if s.duration_min >= LONG_STOP_MIN and s.distance_to_base_m <= STOP_NEAR_BASE_M
-        ]
-        stop_pts = 0 if not long_stops else 10 + (5 if len(long_stops) > 1 else 0)
-        factors.append(
-            RiskFactor(
-                name="stops_near_base",
-                points=stop_pts,
-                detail=f"{len(long_stops)} stop(s) ≥ {LONG_STOP_MIN} min within 6 km",
-            )
-        )
+        factors.extend(motion_factors(motion))
     else:
         factors.append(RiskFactor(name="no_track", points=0, detail="unknown history"))
 
