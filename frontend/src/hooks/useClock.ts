@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export const CLOCK_SPEEDS = [15, 60, 240] as const
+/** Playback multipliers, cycled by the speed button. */
+export const CLOCK_SPEEDS = [1, 2, 3, 4] as const
+/** Simulated minutes per real second at 1x; faster speeds skip minutes on the clock. */
+const BASE_SIM_MIN_PER_SEC = 1
 export type ClockSpeed = (typeof CLOCK_SPEEDS)[number]
 
 /** Simulated day clock in minutes. `speed` = simulated seconds per real second.
@@ -8,7 +11,7 @@ export type ClockSpeed = (typeof CLOCK_SPEEDS)[number]
 export function useClock(start: number, end: number) {
   const [minute, setMinute] = useState(start)
   const [playing, setPlaying] = useState(false)
-  const [speed, setSpeed] = useState<ClockSpeed>(60)
+  const [speed, setSpeed] = useState<ClockSpeed>(1)
   const minuteRef = useRef(start)
 
   const seek = useCallback(
@@ -29,7 +32,7 @@ export function useClock(start: number, end: number) {
     if (!playing) return
     let last = performance.now()
     let id = requestAnimationFrame(function tick(now) {
-      const next = Math.min(end, minuteRef.current + (((now - last) / 1000) * speed) / 60)
+      const next = Math.min(end, minuteRef.current + ((now - last) / 1000) * BASE_SIM_MIN_PER_SEC * speed)
       last = now
       minuteRef.current = next
       setMinute(next)
@@ -52,5 +55,10 @@ export function useClock(start: number, end: number) {
     return () => window.removeEventListener('keydown', onKey)
   }, [toggle, seek])
 
-  return { minute, playing, speed, setSpeed, toggle, seek, start, end }
+  const cycleSpeed = useCallback(
+    () => setSpeed((s) => CLOCK_SPEEDS[(CLOCK_SPEEDS.indexOf(s) + 1) % CLOCK_SPEEDS.length] ?? 1),
+    [],
+  )
+
+  return { minute, playing, speed, cycleSpeed, toggle, seek, start, end }
 }

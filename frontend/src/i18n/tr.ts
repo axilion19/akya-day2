@@ -197,8 +197,8 @@ export const tr = {
     nearZone: (z: string) => `${z} yakını`,
     play: 'Oynat',
     pause: 'Durdur',
-    speed: (x: number) => `${x}×`,
-    speedLabel: 'Oynatma hızı',
+    speed: (x: number) => `${x}x`,
+    speedLabel: 'Oynatma hızı · tıkla: hızlandır',
     timeline: 'Zaman çizelgesi',
     lanes: { tracks: 'aktif iz', frames: 'kare', reports: 'rapor' },
     legend: {
