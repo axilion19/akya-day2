@@ -26,7 +26,7 @@ Hackathon project: an LLM agent that assesses base-security risk from a drone fr
 
 ## Repo conventions
 - Monorepo: `backend/` (FastAPI, uv), `frontend/` (Vite React TS, pnpm).
-- `data/` and `models/` are gitignored; never commit data, weights, `.env` or API keys.
+- `data/` (organizer data, ~10 MB) is committed so every checkout can run the demo; add new data there. `models/` is gitignored; never commit weights, `.env` or API keys.
 - Makefile targets at root: `install`, `dev`, `test`, `lint`, `format`, `gen-types`, `mock`, `precompute`. Recipes must work from Git Bash and PowerShell on Windows (use `uv --directory` / `pnpm --dir`, no `cd`).
 - API contract flows one way: Pydantic models → OpenAPI → `pnpm gen-types` → `frontend/src/api/schema.d.ts`. Never hand-write API types in the frontend.
 - Commits: Conventional Commits (`feat(agent): ...`, `fix(ui): ...`), one logical change each.
