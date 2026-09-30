@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs>
+<marker id="head-475569" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+<marker id="head-0f766e" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f766e"/></marker>
+<marker id="head-0369a1" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0369a1"/></marker>
+<marker id="head-b91c1c" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b91c1c"/></marker>
+<marker id="head-334155" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker>
+<marker id="head-b45309" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b45309"/></marker>
+</defs>
+<rect width="1600" height="900" fill="white"/>
+<text x="70" y="62" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="32" fill="#0f172a" font-weight="bold" text-anchor="start">Gözcü – Baş Denetçi Mimarisi</text>
+<text x="70" y="94" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" fill="#475569" font-weight="normal" text-anchor="start">Her 5 dakikada bir (tik): kod hesaplar, LLM ajanları değerlendirir, insan karar verir</text>
+<rect x="640" y="118" width="320" height="74" rx="14" fill="#f1f5f9" stroke="#334155" stroke-width="2"/>
+<text x="800" y="150" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" fill="#0f172a" font-weight="bold" text-anchor="middle">İnsan Operatör</text>
+<text x="800" y="176" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="middle">uyarıları alır · baş denetçiyle konuşur</text>
+<line x1="740" y1="250" x2="740" y2="197" stroke="#b91c1c" stroke-width="2.5" marker-end="url(#head-b91c1c)"/>
+<text x="728" y="228" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#b91c1c" font-weight="normal" text-anchor="end">uyarı · aciliyet derecesiyle</text>
+<line x1="860" y1="197" x2="860" y2="250" stroke="#334155" stroke-width="2.5" marker-end="url(#head-334155)"/>
+<text x="872" y="228" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#334155" font-weight="normal" text-anchor="start">mesaj: “Doğu Yolu'nu izle”, “aracımız geliyor”</text>
+<rect x="430" y="254" width="740" height="196" rx="14" fill="#f0fdfa" stroke="#0f766e" stroke-width="2.5"/>
+<text x="454" y="290" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="23" fill="#0f766e" font-weight="bold" text-anchor="start">Baş Denetçi</text>
+<text x="600" y="290" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#475569" font-weight="normal" text-anchor="start">LLM · tüm sektörler</text>
+<text x="454" y="318" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#0f172a" font-weight="normal" text-anchor="start">Sektörleri birleştirir, sektörler arası örüntüleri görür, seviye verir, operatörü uyarır</text>
+<text x="454" y="351" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#475569" font-weight="bold" text-anchor="start">Araçlar</text>
+<rect x="520" y="336" width="87" height="23" rx="6" fill="white" stroke="#0f766e" stroke-opacity="0.45"/>
+<text x="528" y="353" font-family="Menlo, Consolas, monospace" font-size="13" fill="#0f766e" font-weight="normal" text-anchor="start">set_level</text>
+<rect x="615.37" y="336" width="127" height="23" rx="6" fill="white" stroke="#0f766e" stroke-opacity="0.45"/>
+<text x="623.37" y="353" font-family="Menlo, Consolas, monospace" font-size="13" fill="#0f766e" font-weight="normal" text-anchor="start">alert_operator</text>
+<rect x="750.39" y="336" width="87" height="23" rx="6" fill="white" stroke="#0f766e" stroke-opacity="0.45"/>
+<text x="758.39" y="353" font-family="Menlo, Consolas, monospace" font-size="13" fill="#0f766e" font-weight="normal" text-anchor="start">get_route</text>
+<rect x="845.76" y="336" width="87" height="23" rx="6" fill="white" stroke="#0f766e" stroke-opacity="0.45"/>
+<text x="853.76" y="353" font-family="Menlo, Consolas, monospace" font-size="13" fill="#0f766e" font-weight="normal" text-anchor="start">get_notes</text>
+<rect x="941.13" y="336" width="103" height="23" rx="6" fill="white" stroke="#0f766e" stroke-opacity="0.45"/>
+<text x="949.13" y="353" font-family="Menlo, Consolas, monospace" font-size="13" fill="#0f766e" font-weight="normal" text-anchor="start">get_reports</text>
+<text x="454" y="388" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#475569" font-weight="bold" text-anchor="start">Sohbet</text>
+<rect x="520" y="373" width="127" height="23" rx="6" fill="white" stroke="#0f766e" stroke-opacity="0.45"/>
+<text x="528" y="390" font-family="Menlo, Consolas, monospace" font-size="13" fill="#0f766e" font-weight="normal" text-anchor="start">create_watcher</text>
+<rect x="655.02" y="373" width="214" height="23" rx="6" fill="white" stroke="#0f766e" stroke-opacity="0.45"/>
+<text x="663.02" y="390" font-family="Menlo, Consolas, monospace" font-size="13" fill="#0f766e" font-weight="normal" text-anchor="start">register_expected_vehicle</text>
+<rect x="877.27" y="373" width="127" height="23" rx="6" fill="white" stroke="#0f766e" stroke-opacity="0.45"/>
+<text x="885.27" y="390" font-family="Menlo, Consolas, monospace" font-size="13" fill="#0f766e" font-weight="normal" text-anchor="start">reply_operator</text>
+<text x="454" y="430" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="start">Çıktı: submit_supervisor_decision · durum özeti, genel tehdit, alan raporu kararları</text>
+<rect x="70" y="254" width="330" height="196" rx="14" fill="white" stroke="#334155" stroke-width="1.5"/>
+<text x="92" y="286" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" fill="#0f172a" font-weight="bold" text-anchor="start">Bir tik (5 dk)</text>
+<text x="92" y="320" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#0f172a" font-weight="normal" text-anchor="start">1  Drone kareleri YOLO ile analiz edilir</text>
+<text x="92" y="350" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#0f172a" font-weight="normal" text-anchor="start">2  Gözcüler sektörlerini paralel değerlendirir</text>
+<text x="92" y="380" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#0f172a" font-weight="normal" text-anchor="start">3  Baş denetçi seviye ve uyarı kararı verir</text>
+<text x="92" y="410" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#0f172a" font-weight="normal" text-anchor="start">4  Operatör uyarılır, sohbet cevaplanır</text>
+<line x1="1172" y1="352" x2="1197" y2="352" stroke="#b45309" stroke-width="2" marker-end="url(#head-b45309)"/>
+<line x1="1198" y1="372" x2="1173" y2="372" stroke="#b45309" stroke-width="2" marker-end="url(#head-b45309)"/>
+<rect x="1200" y="254" width="330" height="196" rx="14" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+<text x="1222" y="286" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" fill="#b45309" font-weight="bold" text-anchor="start">Araç Kaydı (ortak hafıza)</text>
+<text x="1222" y="320" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#0f172a" font-weight="normal" text-anchor="start">Seviyeler: DÜŞÜK · ORTA · YÜKSEK</text>
+<text x="1222" y="350" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#0f172a" font-weight="normal" text-anchor="start">Yükseltme bir sonraki kontrolde onaylanır</text>
+<text x="1222" y="380" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#0f172a" font-weight="normal" text-anchor="start">Gözcü notları, önceki kararlar</text>
+<text x="1222" y="410" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#0f172a" font-weight="normal" text-anchor="start">Operatörün bildirdiği araçlar</text>
+<rect x="77" y="540" width="270" height="128" rx="14" fill="#f0f9ff" stroke="#0369a1" stroke-width="2"/>
+<text x="95" y="572" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="19" fill="#0369a1" font-weight="bold" text-anchor="start">Gözcü W1</text>
+<text x="195" y="572" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="start">LLM</text>
+<text x="95" y="602" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#0f172a" font-weight="normal" text-anchor="start">Kuzey Yolu</text>
+<text x="95" y="626" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#0f172a" font-weight="normal" text-anchor="start">Kuzeydoğu Kavşağı</text>
+<text x="95" y="653" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#475569" font-weight="normal" text-anchor="start" font-style="italic">her tik 1 sektör, sırayla</text>
+<line x1="212.0" y1="536" x2="540" y2="456" stroke="#0369a1" stroke-width="2" marker-end="url(#head-0369a1)"/>
+<rect x="371" y="540" width="270" height="128" rx="14" fill="#f0f9ff" stroke="#0369a1" stroke-width="2"/>
+<text x="389" y="572" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="19" fill="#0369a1" font-weight="bold" text-anchor="start">Gözcü W2</text>
+<text x="489" y="572" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="start">LLM</text>
+<text x="389" y="602" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#0f172a" font-weight="normal" text-anchor="start">Doğu Yolu</text>
+<text x="389" y="626" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#0f172a" font-weight="normal" text-anchor="start">Güneydoğu Yerleşimi</text>
+<text x="389" y="653" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#475569" font-weight="normal" text-anchor="start" font-style="italic">her tik 1 sektör, sırayla</text>
+<line x1="506.0" y1="536" x2="670" y2="456" stroke="#0369a1" stroke-width="2" marker-end="url(#head-0369a1)"/>
+<rect x="665" y="540" width="270" height="128" rx="14" fill="#f0f9ff" stroke="#0369a1" stroke-width="2"/>
+<text x="683" y="572" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="19" fill="#0369a1" font-weight="bold" text-anchor="start">Gözcü W3</text>
+<text x="783" y="572" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="start">LLM</text>
+<text x="683" y="602" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#0f172a" font-weight="normal" text-anchor="start">Güney Kapısı Yaklaşımı</text>
+<text x="683" y="626" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#0f172a" font-weight="normal" text-anchor="start">Güneybatı Yolu</text>
+<text x="683" y="653" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#475569" font-weight="normal" text-anchor="start" font-style="italic">her tik 1 sektör, sırayla</text>
+<line x1="800.0" y1="536" x2="800" y2="456" stroke="#0369a1" stroke-width="2" marker-end="url(#head-0369a1)"/>
+<rect x="959" y="540" width="270" height="128" rx="14" fill="#f0f9ff" stroke="#0369a1" stroke-width="2"/>
+<text x="977" y="572" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="19" fill="#0369a1" font-weight="bold" text-anchor="start">Gözcü W4</text>
+<text x="1077" y="572" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="start">LLM</text>
+<text x="977" y="602" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#0f172a" font-weight="normal" text-anchor="start">Batı Yerleşimi</text>
+<text x="977" y="626" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#0f172a" font-weight="normal" text-anchor="start">Kuzeybatı Yolu</text>
+<text x="977" y="653" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#475569" font-weight="normal" text-anchor="start" font-style="italic">her tik 1 sektör, sırayla</text>
+<line x1="1094.0" y1="536" x2="930" y2="456" stroke="#0369a1" stroke-width="2" marker-end="url(#head-0369a1)"/>
+<rect x="1253" y="540" width="270" height="128" rx="14" fill="white" stroke="#0369a1" stroke-width="2" stroke-dasharray="7 6"/>
+<text x="1271" y="572" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="19" fill="#0369a1" font-weight="bold" text-anchor="start">Gözcü W5</text>
+<text x="1371" y="572" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="start">LLM</text>
+<text x="1271" y="602" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#0f172a" font-weight="normal" text-anchor="start">Operatör isteğiyle</text>
+<text x="1271" y="626" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#0f172a" font-weight="normal" text-anchor="start">tek sektör: Doğu Yolu</text>
+<text x="1271" y="653" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#475569" font-weight="normal" text-anchor="start" font-style="italic">her tik, create_watcher ile</text>
+<line x1="1388.0" y1="536" x2="1060" y2="456" stroke="#0369a1" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#head-0369a1)"/>
+<rect x="538" y="482" width="524" height="26" rx="6" fill="white"/>
+<text x="800" y="500" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#0369a1" font-weight="normal" text-anchor="middle">sektör raporu: araç seviyeleri + gerekçe + kanıt, saha raporu kararları</text>
+<text x="77" y="704" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#475569" font-weight="bold" text-anchor="start">Gözcü araçları</text>
+<rect x="190" y="689" width="87" height="23" rx="6" fill="white" stroke="#0369a1" stroke-opacity="0.45"/>
+<text x="198" y="706" font-family="Menlo, Consolas, monospace" font-size="13" fill="#0369a1" font-weight="normal" text-anchor="start">get_route</text>
+<rect x="285.37" y="689" width="87" height="23" rx="6" fill="white" stroke="#0369a1" stroke-opacity="0.45"/>
+<text x="293.37" y="706" font-family="Menlo, Consolas, monospace" font-size="13" fill="#0369a1" font-weight="normal" text-anchor="start">get_notes</text>
+<rect x="380.74" y="689" width="103" height="23" rx="6" fill="white" stroke="#0369a1" stroke-opacity="0.45"/>
+<text x="388.74" y="706" font-family="Menlo, Consolas, monospace" font-size="13" fill="#0369a1" font-weight="normal" text-anchor="start">get_reports</text>
+<text x="495.97" y="705" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#475569" font-weight="normal" text-anchor="start">→</text>
+<rect x="517.97" y="689" width="167" height="23" rx="6" fill="white" stroke="#0369a1" stroke-opacity="0.45"/>
+<text x="525.97" y="706" font-family="Menlo, Consolas, monospace" font-size="13" fill="#0369a1" font-weight="normal" text-anchor="start">submit_watch_report</text>
+<text x="698.64" y="705" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="start">araç seviyeleri · notlar · rapor kararı ve 0–100 güven puanı</text>
+<rect x="77" y="742" width="1446" height="128" rx="14" fill="#f1f5f9" stroke="#334155" stroke-width="1.5"/>
+<text x="100" y="774" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="19" fill="#334155" font-weight="bold" text-anchor="start">Kod katmanı</text>
+<text x="222" y="774" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#475569" font-weight="normal" text-anchor="start">deterministik · LLM hiçbir sayıyı kendisi hesaplamaz</text>
+<text x="1500" y="774" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="end">Girdiler: drone kareleri · araç izleri · saha raporları (güvenilmez)</text>
+<text x="100" y="810" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#0f172a" font-weight="bold" text-anchor="start">YOLO araç tespiti</text>
+<text x="100" y="834" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="start">drone karelerinde araç ve tipi</text>
+<text x="100" y="855" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="start">(1. gün modelimiz)</text>
+<text x="580" y="810" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#0f172a" font-weight="bold" text-anchor="start">İz ve hareket hesabı</text>
+<text x="580" y="834" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="start">mesafe, hız, varış süresi, rota deseni:</text>
+<text x="580" y="855" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="start">dönme · yörünge · yoklama · gözetleme</text>
+<text x="1060" y="810" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#0f172a" font-weight="bold" text-anchor="start">Kurallar ve denetim</text>
+<text x="1060" y="834" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="start">araç başına seviye tavanı, şema doğrulama,</text>
+<text x="1060" y="855" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569" font-weight="normal" text-anchor="start">hatalıysa düzeltme, gerekirse yedek karar</text>
+<line x1="212" y1="738" x2="212" y2="715" stroke="#334155" stroke-width="1.5" stroke-dasharray="6 5" marker-end="url(#head-334155)"/>
+<line x1="506" y1="738" x2="506" y2="715" stroke="#334155" stroke-width="1.5" stroke-dasharray="6 5" marker-end="url(#head-334155)"/>
+<line x1="800" y1="738" x2="800" y2="715" stroke="#334155" stroke-width="1.5" stroke-dasharray="6 5" marker-end="url(#head-334155)"/>
+<line x1="1094" y1="738" x2="1094" y2="715" stroke="#334155" stroke-width="1.5" stroke-dasharray="6 5" marker-end="url(#head-334155)"/>
+<text x="1523" y="734" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#334155" font-weight="normal" text-anchor="end" font-style="italic">hesaplanmış bilgiler yukarı · kurallar her kararı sınırlar</text>
+</svg>
